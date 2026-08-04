@@ -29,10 +29,12 @@ export class SlingshotInput {
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerMove = this._onPointerMove.bind(this);
     this._onPointerUp = this._onPointerUp.bind(this);
+    this._onPointerCancel = this._onPointerCancel.bind(this);
 
     canvas.addEventListener('pointerdown', this._onPointerDown);
     window.addEventListener('pointermove', this._onPointerMove);
     window.addEventListener('pointerup', this._onPointerUp);
+    window.addEventListener('pointercancel', this._onPointerCancel);
   }
 
   startBarrierPlacement() {
@@ -70,6 +72,7 @@ export class SlingshotInput {
   }
 
   _onPointerDown(e) {
+    if (e.button !== undefined && e.button !== 0) return;
     const pos = this._getMousePos(e);
     if (this.placementMode === 'barrier') {
       this.events.emit('place-barrier', { x: pos.x, y: pos.y });
@@ -77,6 +80,9 @@ export class SlingshotInput {
       return;
     }
     if (!this.active) return;
+    try {
+      e.target?.setPointerCapture?.(e.pointerId);
+    } catch (_) {}
     this.dragging = true;
     this.dragStart = pos;
     this.dragCurrent = pos;
@@ -95,9 +101,14 @@ export class SlingshotInput {
     this._updateAim();
   }
 
-  _onPointerUp() {
+  _onPointerUp(e) {
     if (!this.dragging) return;
     this.dragging = false;
+    try {
+      if (e && e.pointerId !== undefined) {
+        e.target?.releasePointerCapture?.(e.pointerId);
+      }
+    } catch (_) {}
 
     if (this.launchVelocity) {
       const speed = length(this.launchVelocity.x, this.launchVelocity.y);
@@ -106,6 +117,12 @@ export class SlingshotInput {
       }
     }
 
+    this.launchVelocity = null;
+    this.trajectory = [];
+  }
+
+  _onPointerCancel() {
+    this.dragging = false;
     this.launchVelocity = null;
     this.trajectory = [];
   }
@@ -225,5 +242,6 @@ export class SlingshotInput {
     this.canvas.removeEventListener('pointerdown', this._onPointerDown);
     window.removeEventListener('pointermove', this._onPointerMove);
     window.removeEventListener('pointerup', this._onPointerUp);
+    window.removeEventListener('pointercancel', this._onPointerCancel);
   }
 }

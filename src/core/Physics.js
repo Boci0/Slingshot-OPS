@@ -44,6 +44,10 @@ export function resolveWorldCollisions(ball) {
       ball.vx *= W.groundFriction;
       events.push({ type: 'ground', ball });
     }
+    // Dampen low-velocity micro-rolling so balls settle cleanly
+    if (Math.abs(ball.vy) < 15) ball.vy = 0;
+    if (Math.abs(ball.vx) < 15) ball.vx *= 0.8;
+    if (Math.abs(ball.vx) < 4) ball.vx = 0;
   }
 
   // Left wall

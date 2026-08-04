@@ -238,6 +238,14 @@ export class Game {
     }
   }
 
+  _startPlayerTurn() {
+    this.turnSystem.startPlayerTurn();
+    this.slingshotInput.setActive(true);
+    if (this.player) {
+      this.slingshotInput.setAnchor(this.player.x, this.player.y);
+    }
+  }
+
   stop() {
     this.running = false;
     this.slingshotInput.setActive(false);
@@ -379,7 +387,7 @@ export class Game {
         // Player turn ended -> start Enemy 0 (first living enemy)
         const firstIdx = this.enemies.findIndex((e) => e.hp > 0);
         if (firstIdx === -1) {
-          this.turnSystem.startPlayerTurn();
+          this._startPlayerTurn();
         } else {
           this._startEnemyTurnAtIndex(firstIdx);
         }
@@ -397,9 +405,7 @@ export class Game {
           this._startEnemyTurnAtIndex(nextIdx);
         } else {
           // All enemies have completed their turn -> back to Player!
-          this.turnSystem.startPlayerTurn();
-          this.slingshotInput.setActive(true);
-          this.slingshotInput.setAnchor(this.player.x, this.player.y);
+          this._startPlayerTurn();
         }
       }
     });
@@ -525,6 +531,10 @@ export class Game {
     for (const enemy of this.enemies) enemy.update(dt);
 
     if (!this.running) return;
+
+    if (this.turnSystem.isPlayerTurn && this.turnSystem.isAiming && this.player) {
+      this.slingshotInput.setAnchor(this.player.x, this.player.y);
+    }
 
     if (this.turnSystem.isEnemyTurn && this.turnSystem.isAiming) {
       this.enemyAI.update(dt);

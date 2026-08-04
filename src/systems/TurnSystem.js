@@ -89,8 +89,16 @@ export class TurnSystem {
       this.settleTimer = 0;
     }
 
-    // Require both a minimum turn time and a sustained settle period
-    if (this.turnTime >= T.minTurnTime && this.settleTimer >= W.settleTime) {
+    // Require both a minimum turn time and a sustained settle period,
+    // OR force-end if max turn time (6 seconds) is reached.
+    const maxTurnTime = 6.0;
+    if ((this.turnTime >= T.minTurnTime && this.settleTimer >= W.settleTime) || this.turnTime >= maxTurnTime) {
+      if (this.turnTime >= maxTurnTime) {
+        for (const b of balls) {
+          b.vx = 0;
+          b.vy = 0;
+        }
+      }
       this.endTurn();
       return true;
     }
