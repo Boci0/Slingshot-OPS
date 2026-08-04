@@ -993,6 +993,14 @@ const ENCOUNTERS = [
     ],
   },
   {
+    title: 'UNKNOWING FOG',
+    desc: 'A dense, impenetrable mist shrouds the forward path. Navigating blindly is risky but yields extra action time.',
+    choices: [
+      { label: 'Push Through Dense Mist', loseHp: 14, gainActions: 1 },
+      { label: 'Scavenge Fog Margins', gainGold: 14 },
+    ],
+  },
+  {
     title: 'SYNDICATE TRADE DELEGATE',
     desc: 'A high-ranking trade official offers a high-yield investment.',
     choices: [
