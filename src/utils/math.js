@@ -1,0 +1,31 @@
+// Vector and math helpers.
+
+export function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function length(x, y) {
+  return Math.hypot(x, y);
+}
+
+export function normalize(x, y) {
+  const len = length(x, y);
+  if (len === 0) return { x: 0, y: 0 };
+  return { x: x / len, y: y / len };
+}
+
+export function distance(x1, y1, x2, y2) {
+  return Math.hypot(x2 - x1, y2 - y1);
+}
+
+export function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+export function degToRad(deg) {
+  return (deg * Math.PI) / 180;
+}
+
+export function radToDeg(rad) {
+  return (rad * 180) / Math.PI;
+}

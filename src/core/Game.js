@@ -1,0 +1,619 @@
+// ============================================================
+// Game — orchestrates the full game loop: turn flow, physics
+// stepping, collisions, damage, AI, input, and rendering.
+// Supports multi-enemy battles (each enemy takes its own turn)
+// and battle configurations injected by the roguelike App
+// (player HP/ATK/DEF, enemy archetypes/tiers, relics, quest hooks).
+// ============================================================
+
+import { CONFIG } from '../config.js';
+import { Events } from './Events.js';
+import { stepWorld } from './Physics.js';
+import { Ball } from '../entities/Ball.js';
+import { CollisionSystem } from '../systems/CollisionSystem.js';
+import { TurnSystem, TurnPhase } from '../systems/TurnSystem.js';
+import { SlingshotInput } from '../input/SlingshotInput.js';
+import { EnemyAI } from '../ai/EnemyAI.js';
+import { Renderer } from '../rendering/Renderer.js';
+
+const W = CONFIG.world;
+const B = CONFIG.ball;
+const C = CONFIG.colors;
+
+const FIXED_DT = 1 / 120;
+
+const DEFAULT_BATTLE = {
+  player: { maxHp: 100, atk: 1, def: 0, abilities: {} },
+  enemies: [
+    { maxHp: 100, atk: 1, def: 0, displayName: 'HOSTILE', archetype: 'standard', xPct: 0.75 },
+  ],
+  relics: [],
+  nodeType: 'combat',
+};
+
+export class Game {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.events = new Events();
+    this.renderer = new Renderer(canvas);
+    this.turnSystem = new TurnSystem(this.events);
+    this.collisionSystem = new CollisionSystem(this.events);
+    this.slingshotInput = new SlingshotInput(canvas, this.events);
+    this.enemyAI = new EnemyAI(this.events);
+
+    this.player = null;
+    this.enemies = [];
+    this.particles = [];
+    this.barriers = [];
+    this.winner = null;
+    this.battleConfig = null;
+    this.battleStats = this._freshBattleStats();
+    this.accumulator = 0;
+    this.running = false;
+    this.abilities = this._freshAbilities();
+    this.relics = [];
+
+    this._bindEvents();
+    this._bindKeys();
+
+    this.reset(DEFAULT_BATTLE);
+  }
+
+  _freshBattleStats() {
+    return {
+      turns: 0,
+      playerDamageTaken: 0,
+      wallBounced: false,
+      echoUsed: false,
+    };
+  }
+
+  _freshAbilities() {
+    // Relic "Overcharge Cell" reduces ability cooldowns by 1 turn
+    const reduce = this.relics?.includes('rel_overcharge') ? 1 : 0;
+    return {
+      overdrive: { ready: true, cooldownLeft: 0, baseCooldown: Math.max(1, CONFIG.abilities.overdrive.cooldown - reduce), name: CONFIG.abilities.overdrive.name },
+      barrier: { ready: true, cooldownLeft: 0, baseCooldown: Math.max(1, CONFIG.abilities.barrier.cooldown - reduce), name: CONFIG.abilities.barrier.name },
+    };
+  }
+
+  /**
+   * Configure and begin a battle.
+   * @param {Object} opts - partial battle config (see DEFAULT_BATTLE)
+   */
+  startBattle(opts = {}) {
+    const merged = {
+      player: { ...DEFAULT_BATTLE.player, ...(opts.player || {}) },
+      enemies: (opts.enemies && opts.enemies.length ? opts.enemies : DEFAULT_BATTLE.enemies),
+      relics: opts.relics || [],
+      nodeType: opts.nodeType || 'combat',
+    };
+    this.reset(merged);
+    this.running = true;
+  }
+
+  reset(config = DEFAULT_BATTLE) {
+    this.battleConfig = config;
+    this.battleStats = this._freshBattleStats();
+    this.relics = config.relics || [];
+
+    const groundY = W.groundY - B.radius;
+
+    this.player = new Ball({
+      x: W.width * 0.25,
+      y: groundY,
+      team: 'player',
+      color: C.player,
+      darkColor: C.playerDark,
+      maxHp: config.player.maxHp || B.maxHp,
+      displayName: 'YOU',
+    });
+    if (config.player.hp !== undefined) {
+      this.player.hp = Math.max(1, Math.min(this.player.maxHp, config.player.hp));
+    }
+
+    // Spawn all enemies spread across the right side
+    this.enemies = (config.enemies || []).map((e, i) => {
+      const xPct = e.xPct ?? 0.7 + i * 0.12;
+      return new Ball({
+        x: W.width * xPct,
+        y: groundY,
+        team: 'enemy',
+        color: C.enemy,
+        darkColor: C.enemyDark,
+        maxHp: e.maxHp || B.maxHp,
+        displayName: e.displayName || 'HOSTILE',
+        archetype: e.archetype || 'standard',
+        atk: e.atk,
+        def: e.def,
+        aiDifficulty: e.aiDifficulty,
+        thinkDelay: e.thinkDelay,
+      });
+    });
+
+    this.techStats = config.techStats || {};
+    this.forcefieldTurnCounter = 0;
+    this.forcefieldActive = !!this.techStats.hasForcefield;
+    this.medkitUsed = false;
+
+    // Aggregate enemy stats for damage resolution
+    this.collisionSystem.setStats({
+      playerAtk: config.player.atk ?? 1,
+      playerDef: config.player.def ?? 0,
+      relics: this.relics,
+      battleStats: this.battleStats,
+      techStats: this.techStats,
+      riskLevel: config.riskLevel || 0,
+    });
+
+    this.particles = [];
+    this.barriers = [];
+    this.abilities = this._freshAbilities();
+    this.winner = null;
+    this.turnSystem.reset();
+    this.turnSystem.enemyIndex = 0;
+    this.slingshotInput.setActive(true);
+    this.slingshotInput.setAnchor(this.player.x, this.player.y);
+  }
+
+  /** The enemy whose turn it currently is. */
+  get activeEnemy() {
+    return this.enemies[this.turnSystem.enemyIndex] || null;
+  }
+
+  get allEnemiesDead() {
+    return this.enemies.every((e) => e.hp <= 0);
+  }
+
+  /**
+   * Use a battle ability.
+   * @param {string} id - 'overdrive' | 'barrier'
+   * @returns {boolean} true if the ability was used or placement mode started
+   */
+  useAbility(id) {
+    if (!this.running) return false;
+    const ab = this.abilities[id];
+    if (!ab || !ab.ready) return false;
+
+    if (id === 'overdrive') {
+      ab.ready = false;
+      ab.cooldownLeft = ab.baseCooldown;
+      this.battleStats.overdriveActive = true;
+      this.events.emit('ability-used', { id, name: CONFIG.abilities.overdrive.name });
+      return true;
+    }
+
+    if (id === 'barrier') {
+      const activeCount = this.barriers.filter((b) => b.active).length;
+      if (activeCount >= CONFIG.abilities.barrier.maxActive) return false;
+
+      // Start placement mode on slingshotInput
+      this.slingshotInput.startBarrierPlacement();
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Deploy a barrier at specific canvas coordinates.
+   */
+  deployBarrierAt(x, y) {
+    const ab = this.abilities.barrier;
+    if (!ab || !ab.ready) return false;
+    const activeCount = this.barriers.filter((b) => b.active).length;
+    if (activeCount >= CONFIG.abilities.barrier.maxActive) return false;
+
+    const bw = 14;
+    const bh = 90;
+    const bx = Math.max(50, Math.min(CONFIG.world.width - 50, x)) - bw / 2;
+    const clampedY = Math.max(50, Math.min(CONFIG.world.groundY - bh, y - bh / 2));
+
+    this.barriers.push({
+      x: bx,
+      y: clampedY,
+      w: bw,
+      h: bh,
+      active: true,
+      hp: CONFIG.damage.barrierHp,
+    });
+    ab.ready = false;
+    ab.cooldownLeft = ab.baseCooldown;
+    this.events.emit('ability-used', { id: 'barrier', name: CONFIG.abilities.barrier.name });
+    return true;
+  }
+
+  startBarrierPlacement() {
+    this.useAbility('barrier');
+  }
+
+  /** Tick ability cooldowns each turn. */
+  _tickAbilities() {
+    for (const key of Object.keys(this.abilities)) {
+      const ab = this.abilities[key];
+      if (!ab.ready) {
+        ab.cooldownLeft -= 1;
+        if (ab.cooldownLeft <= 0) ab.ready = true;
+      }
+    }
+  }
+
+  stop() {
+    this.running = false;
+    this.slingshotInput.setActive(false);
+  }
+
+  _startEnemyTurnAtIndex(index) {
+    this.turnSystem.startEnemyTurn(index);
+    const enemy = this.enemies[index];
+    if (!enemy || enemy.hp <= 0) return;
+
+    // --- Tactical Enemy Abilities ---
+    if (enemy.archetype === 'striker') {
+      enemy.turnCount = (enemy.turnCount || 0) + 1;
+      if (enemy.turnCount % 2 === 0) {
+        enemy.isOvercharged = true;
+        this.events.emit('enemy-ability', {
+          enemy,
+          ability: 'Overdrive Charge',
+          desc: 'Striker charges a high-velocity pulse shot!',
+        });
+      }
+    } else if (enemy.archetype === 'tank') {
+      if (enemy.hp < enemy.maxHp * 0.75 && !enemy.hasFortified) {
+        enemy.hasFortified = true;
+        enemy.def = (enemy.def || 0) + 3;
+        const bw = 14;
+        const bh = 90;
+        this.barriers.push({
+          x: Math.max(50, enemy.x - 70),
+          y: CONFIG.world.groundY - bh - 5,
+          w: bw,
+          h: bh,
+          active: true,
+          hp: CONFIG.damage.barrierHp,
+        });
+        this.events.emit('enemy-ability', {
+          enemy,
+          ability: 'Fortify Shield',
+          desc: 'Tank deploys a protective shield barrier!',
+        });
+      }
+    } else if (enemy.archetype === 'boss' || enemy.displayName === 'SECTOR COMMANDER') {
+      this._triggerShockwave(enemy);
+    }
+
+    this.enemyAI.configure({
+      difficulty: enemy.aiDifficulty ?? 0.5,
+      thinkDelay: enemy.thinkDelay ?? CONFIG.ai.thinkDelay,
+    });
+    this.enemyAI.startTurn(enemy, this.player, this.barriers);
+  }
+
+  _triggerShockwave(enemy) {
+    const dx = this.player.x - enemy.x;
+    const dy = this.player.y - enemy.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    if (dist < 400) {
+      const force = (1 - dist / 400) * 450;
+      this.player.vx += (dx / dist) * force;
+      this.player.vy += (dy / dist) * force - 120;
+    }
+    for (const b of this.barriers) {
+      if (!b.active) continue;
+      const bx = b.x + b.w / 2;
+      if (Math.abs(bx - enemy.x) < 320) {
+        b.hp = Math.max(0, b.hp - 25);
+        if (b.hp <= 0) b.active = false;
+      }
+    }
+    this.particles.push({
+      x: enemy.x,
+      y: enemy.y,
+      radius: 20,
+      maxRadius: 280,
+      life: 0.45,
+      maxLife: 0.45,
+      type: 'shockwave',
+    });
+    this.events.emit('enemy-ability', {
+      enemy,
+      ability: 'Shockwave Pulse',
+      desc: 'Commander emits a seismic force pulse!',
+    });
+  }
+
+  _bindEvents() {
+    this.events.on('place-barrier', ({ x, y }) => {
+      if (!this.running) return;
+      this.deployBarrierAt(x, y);
+    });
+
+    this.events.on('player-launch', ({ velocity }) => {
+      if (!this.running) return;
+      if (!this.turnSystem.isPlayerTurn || this.turnSystem.isFlying) return;
+      this.player.vx = velocity.x;
+      this.player.vy = velocity.y;
+      this.slingshotInput.setActive(false);
+      this.turnSystem.launch();
+    });
+
+    this.events.on('enemy-launch', ({ velocity, enemyIndex }) => {
+      if (!this.running) return;
+      if (this.turnSystem.phase !== TurnPhase.ENEMY_AIM) return;
+      const enemy = this.enemies[enemyIndex ?? this.turnSystem.enemyIndex];
+      if (!enemy || enemy.hp <= 0) return;
+
+      // Overcharged striker speed boost
+      if (enemy.isOvercharged) {
+        velocity.x *= 1.35;
+        velocity.y *= 1.35;
+      }
+
+      enemy.vx = velocity.x;
+      enemy.vy = velocity.y;
+      this.turnSystem.launch();
+    });
+
+    this.events.on('turn-end', ({ playerTurn }) => {
+      if (!this.running) return;
+      if (this.turnSystem.phase === TurnPhase.GAME_OVER) return;
+
+      if (playerTurn) {
+        this.battleStats.turns += 1;
+        this._tickAbilities();
+
+        // Forcefield Barrier tech: regenerate forcefield every 4 turns
+        if (this.techStats.hasForcefield && this.battleStats.turns % 4 === 0) {
+          this.forcefieldActive = true;
+        }
+
+        // Auto-Medic relic: restore 6 HP at end of player's turn
+        if (this.relics.includes('rel_medic')) {
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + 6);
+        }
+
+        // Reset turn-scoped Fortified Matrix DEF bonus
+        this.collisionSystem.stats.playerDef = this.battleConfig?.player?.def || 0;
+
+        // Player turn ended -> start Enemy 0 (first living enemy)
+        const firstIdx = this.enemies.findIndex((e) => e.hp > 0);
+        if (firstIdx === -1) {
+          this.turnSystem.startPlayerTurn();
+        } else {
+          this._startEnemyTurnAtIndex(firstIdx);
+        }
+      } else {
+        // Enemy turn ended -> check if more living enemies need to take a turn
+        const currentIdx = this.turnSystem.enemyIndex;
+        let nextIdx = -1;
+        for (let i = currentIdx + 1; i < this.enemies.length; i++) {
+          if (this.enemies[i].hp > 0) {
+            nextIdx = i;
+            break;
+          }
+        }
+        if (nextIdx !== -1) {
+          this._startEnemyTurnAtIndex(nextIdx);
+        } else {
+          // All enemies have completed their turn -> back to Player!
+          this.turnSystem.startPlayerTurn();
+          this.slingshotInput.setActive(true);
+          this.slingshotInput.setAnchor(this.player.x, this.player.y);
+        }
+      }
+    });
+
+    this.events.on('damage', ({ attacker, victim, damage, killed, isThorn }) => {
+      this._spawnHitParticles(victim.x, victim.y);
+      if (killed) {
+        this._spawnDefeatParticles(victim.x, victim.y, victim.color);
+      }
+
+      if (attacker.team === 'player') {
+        this.events.emit('player-dealt-damage', { victim, damage });
+      } else {
+        this.battleStats.playerDamageTaken += damage;
+        this.events.emit('enemy-dealt-damage', { attacker, damage });
+      }
+
+      // Emergency Medkit tech: restore 25 HP once per combat when dropping below 25% HP
+      if (victim.team === 'player' && this.techStats.hasEmergencyMedkit && !this.medkitUsed && victim.hp > 0 && victim.hp <= victim.maxHp * 0.25) {
+        this.medkitUsed = true;
+        victim.hp = Math.min(victim.maxHp, victim.hp + 25);
+        this.events.emit('emergency-medkit-heal', { hp: victim.hp });
+      }
+
+      // Fortified Matrix tech: +3 DEF for turn on heavy hit (>20 DMG)
+      if (victim.team === 'player' && this.techStats.hasFortifiedMatrix && damage >= 20) {
+        this.collisionSystem.stats.playerDef = (this.battleConfig?.player?.def || 0) + 3;
+      }
+
+      // Wall bounce quest: enemy hit after a wall bounce
+      if (attacker.team === 'player' && this.battleStats.wallBounced) {
+        this.events.emit('wall-bounce-hit', { damage });
+        this.battleStats.wallBounced = false;
+      }
+
+      // Thorns relic: reflect 25% of damage taken back to the attacker
+      if (victim.team === 'player' && attacker.team === 'enemy' && this.relics.includes('rel_thorns') && !isThorn) {
+        const reflected = Math.max(1, Math.round(damage * 0.25));
+        attacker.hp = Math.max(0, attacker.hp - reflected);
+        this.events.emit('player-dealt-damage', { victim: attacker, damage: reflected });
+        if (attacker.hp <= 0) {
+          this._checkBattleEnd(attacker);
+        }
+      }
+
+      if (killed) {
+        this._checkBattleEnd(victim);
+      }
+    });
+
+    // Wall bounces tracked for quest support
+    this.events.on('wall-bounce', ({ ball }) => {
+      if (ball.team === 'player') this.battleStats.wallBounced = true;
+    });
+  }
+
+  _checkBattleEnd(victim) {
+    if (this.turnSystem.phase === TurnPhase.GAME_OVER) return;
+
+    if (this.player.hp <= 0) {
+      this.winner = 'enemy';
+      this._endBattle();
+      return;
+    }
+
+    if (this.allEnemiesDead) {
+      this.winner = 'player';
+      this._endBattle();
+    }
+  }
+
+  _endBattle() {
+    this.running = false;
+    this.slingshotInput.setActive(false);
+    this.turnSystem.gameOver(this.winner);
+    this.events.emit('battle-end', {
+      won: this.winner === 'player',
+      nodeType: this.battleConfig.nodeType,
+    });
+  }
+
+  _bindKeys() {
+    this._onKeyDown = (e) => {
+      if (this.turnSystem.phase === TurnPhase.GAME_OVER) {
+        if (e.key === 'r' || e.key === 'R' || e.key === 'Enter') {
+          this.events.emit('battle-continue');
+        }
+        return;
+      }
+      if (this.running && this.turnSystem.isPlayerTurn) {
+        if (e.code === 'KeyB' || e.code === 'Digit2') {
+          e.preventDefault();
+          this.useAbility('barrier');
+        } else if (e.code === 'Digit1') {
+          e.preventDefault();
+          this.useAbility('overdrive');
+        }
+      }
+    };
+    window.addEventListener('keydown', this._onKeyDown);
+
+    this._onCanvasClick = () => {
+      if (!this.running) return;
+      if (this.turnSystem.phase === TurnPhase.GAME_OVER) {
+        this.events.emit('battle-continue');
+      }
+    };
+    this.canvas.addEventListener('click', this._onCanvasClick);
+  }
+
+  update(dt) {
+    dt = Math.min(dt, 0.1);
+
+    this.accumulator += dt;
+    while (this.accumulator >= FIXED_DT) {
+      this._stepPhysics(FIXED_DT);
+      this.accumulator -= FIXED_DT;
+    }
+
+    this._updateParticles(dt);
+
+    this.player.update(dt);
+    for (const enemy of this.enemies) enemy.update(dt);
+
+    if (!this.running) return;
+
+    if (this.turnSystem.isEnemyTurn && this.turnSystem.isAiming) {
+      this.enemyAI.update(dt);
+    }
+
+    if (this.turnSystem.isFlying) {
+      const livingEnemies = this.enemies.filter((e) => e.hp > 0);
+      this.turnSystem.update(dt, [this.player, ...livingEnemies]);
+    }
+  }
+
+  _stepPhysics(dt) {
+    const livingEnemies = this.enemies.filter((e) => e.hp > 0);
+    const balls = [this.player, ...livingEnemies];
+    const events = stepWorld(balls, dt, this.barriers);
+    for (const evt of events) {
+      if (evt.type === 'wall') {
+        this.events.emit('wall-bounce', { ball: evt.ball });
+      }
+    }
+    this.collisionSystem.process(events, balls);
+  }
+
+  _updateParticles(dt) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 400 * dt;
+      if (p.life <= 0) this.particles.splice(i, 1);
+    }
+  }
+
+  _spawnHitParticles(x, y) {
+    for (let i = 0; i < 18; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 180;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 120,
+        size: 2 + Math.random() * 4,
+        color: ['#ffd54f', '#ff8a65', '#ffffff', '#ffecb3'][Math.floor(Math.random() * 4)],
+        life: 0.4 + Math.random() * 0.5,
+        maxLife: 0.9,
+      });
+    }
+  }
+
+  _spawnDefeatParticles(x, y, color = '#e0655c') {
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 120 + Math.random() * 260;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 160,
+        size: 3 + Math.random() * 6,
+        color: [color, '#ffffff', '#ff8a65', '#ffd54f'][Math.floor(Math.random() * 4)],
+        life: 0.6 + Math.random() * 0.6,
+        maxLife: 1.2,
+      });
+    }
+  }
+
+  render() {
+    const world = {
+      player: this.player,
+      enemies: this.enemies,
+      turnSystem: this.turnSystem,
+      particles: this.particles,
+      barriers: this.barriers,
+      abilities: this.abilities,
+      winner: this.winner,
+      battleSummary: {
+        kills: this.enemies.filter((e) => e.hp <= 0).length,
+        turns: this.battleStats.turns,
+      },
+      slingshotInput: this.slingshotInput,
+    };
+    this.renderer.render(world);
+  }
+
+  destroy() {
+    window.removeEventListener('keydown', this._onKeyDown);
+    this.canvas.removeEventListener('click', this._onCanvasClick);
+    this.slingshotInput.destroy();
+  }
+}
