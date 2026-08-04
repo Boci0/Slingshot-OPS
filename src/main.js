@@ -15,6 +15,7 @@ import { RogueMap } from './rogue/RogueMap.js';
 import { RogueMapRenderer } from './rendering/RogueMapRenderer.js';
 import { Minigame } from './minigame/Minigame.js';
 import { UIManager } from './ui/UIManager.js';
+import { DevTools } from './dev/DevTools.js';
 
 // ---------- Core systems ----------
 
@@ -28,6 +29,7 @@ const techTree = new TechTree(saveSystem);
 const game = new Game(canvas);
 const minigame = new Minigame(canvas);
 let mapRenderer = null;
+const devTools = new DevTools(() => game, () => run, saveSystem, techTree);
 
 // ---------- Run state ----------
 

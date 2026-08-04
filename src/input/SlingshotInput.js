@@ -200,12 +200,14 @@ export class SlingshotInput {
 
     if (!this.active || !this.dragging) return;
 
-    if (this.ballX !== undefined) {
+    if (this.ballX !== undefined && this.dragStart && this.dragCurrent) {
+      const dx = this.dragStart.x - this.dragCurrent.x;
+      const dy = this.dragStart.y - this.dragCurrent.y;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(this.ballX, this.ballY);
-      ctx.lineTo(this.dragCurrent.x, this.dragCurrent.y);
+      ctx.lineTo(this.ballX - dx, this.ballY - dy);
       ctx.stroke();
     }
 
