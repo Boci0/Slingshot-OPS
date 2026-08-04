@@ -163,14 +163,22 @@ function bindAbilityButtons() {
   const btnOverdrive = document.getElementById('btn-overdrive');
   const btnBarrier = document.getElementById('btn-barrier');
 
-  const triggerOverdrive = () => {
+  const triggerOverdrive = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (state !== State.BATTLE) return;
     if (game.useAbility('overdrive')) {
       updateAbilityHud();
     }
   };
 
-  const triggerBarrier = () => {
+  const triggerBarrier = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (state !== State.BATTLE) return;
     if (game.useAbility('barrier')) {
       updateAbilityHud();
@@ -179,26 +187,19 @@ function bindAbilityButtons() {
 
   if (btnOverdrive) {
     btnOverdrive.addEventListener('click', triggerOverdrive);
-    btnOverdrive.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      triggerOverdrive();
-    });
   }
   if (btnBarrier) {
     btnBarrier.addEventListener('click', triggerBarrier);
-    btnBarrier.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      triggerBarrier();
-    });
   }
 
   // Keyboard hotkeys [1] and [2]
   window.addEventListener('keydown', (e) => {
     if (state !== State.BATTLE) return;
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
-      triggerOverdrive();
+      triggerOverdrive(e);
     } else if (e.key === '2' || e.code === 'Digit2' || e.code === 'Numpad2') {
-      triggerBarrier();
+      triggerBarrier(e);
     }
   });
 }

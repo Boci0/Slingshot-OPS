@@ -240,10 +240,12 @@ export class Game {
 
   _startPlayerTurn() {
     this.turnSystem.startPlayerTurn();
+    this.slingshotInput.cancelPlacement();
     this.slingshotInput.setActive(true);
     if (this.player) {
       this.slingshotInput.setAnchor(this.player.x, this.player.y);
     }
+    this.events.emit('player-turn-start');
   }
 
   stop() {
@@ -492,16 +494,6 @@ export class Game {
       if (this.turnSystem.phase === TurnPhase.GAME_OVER) {
         if (e.key === 'r' || e.key === 'R' || e.key === 'Enter') {
           this.events.emit('battle-continue');
-        }
-        return;
-      }
-      if (this.running && this.turnSystem.isPlayerTurn) {
-        if (e.code === 'KeyB' || e.code === 'Digit2') {
-          e.preventDefault();
-          this.useAbility('barrier');
-        } else if (e.code === 'Digit1') {
-          e.preventDefault();
-          this.useAbility('overdrive');
         }
       }
     };
