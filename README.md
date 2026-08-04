@@ -1,4 +1,4 @@
-# 🎯 SLINGSHOT OPS
+# SLINGSHOT OPS
 
 > A tactical ballistic-combat roguelike built with HTML5 Canvas & JavaScript.
 
@@ -7,23 +7,23 @@
 
 ---
 
-## 🎮 Overview
+## Overview
 
 **Slingshot OPS** is an action-strategy roguelike game where precision launching meets tactical node-based map traversal. Slingshot your operative ball at hostile units, utilize dynamic wall-bounces and overcharged abilities, acquire game-changing relics, and permanently upgrade your stats across runs.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- 🎯 **Ballistic Combat System**: Real-time trajectory prediction, power dragging, elastic collisions, and physics-based damage scaling.
-- 🗺️ **Branching Tactical Node Map**: Procedurally generated 5-floor campaign with Combat, Elite, Boss, Encounter, Shop, Rest, and Minigame nodes.
-- 💎 **40+ Collectibles & Relics**: Build synergies across 8 unique categories (*Tactical*, *Gladiator*, *High-Tech*, *Frontier*, *Sanctuary*, etc.).
-- 🧬 **Persistent Tech Tree**: Earn Tech Points to unlock permanent upgrades across Sharpshooter (ATK), Vitality (HP), and Aegis (DEF).
-- 📜 **Dynamic Quests & Encounters**: Interactive event choices with risk/reward mechanics and in-run objectives.
+- **Ballistic Combat System**: Real-time trajectory prediction, power dragging, elastic collisions, and physics-based damage scaling.
+- **Branching Tactical Node Map**: Procedurally generated 5-floor campaign with Combat, Elite, Boss, Encounter, Shop, Rest, and Minigame nodes.
+- **40+ Collectibles & Relics**: Build synergies across 8 unique categories (*Tactical*, *Gladiator*, *High-Tech*, *Frontier*, *Sanctuary*, etc.).
+- **Persistent Tech Tree**: Earn Tech Points to unlock permanent upgrades across Sharpshooter (ATK), Vitality (HP), and Aegis (DEF).
+- **Dynamic Quests & Encounters**: Interactive event choices with risk/reward mechanics and in-run objectives.
 
 ---
 
-## 🕹️ Controls
+## Controls
 
 | Action | Input |
 | --- | --- |
@@ -33,7 +33,7 @@
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Core**: Vanilla JavaScript (ES6+ Modules), HTML5 Canvas
 - **Build Tool**: Vite
@@ -41,7 +41,7 @@
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## Quick Start (Local Development)
 
 ```bash
 # Clone the repository
@@ -59,7 +59,7 @@ npm run dev
 
 ---
 
-## 📁 Project Architecture
+## Project Architecture
 
 - `src/core/` — Game loop, physics engine, event bus
 - `src/entities/` — Ball units, barriers, and combat entities
