@@ -732,7 +732,7 @@ function buyShopItem(item) {
     ui.updateRunHud(run);
     return true;
   }
-  const cost = Math.round(item.cost * run.shopDiscount);
+  const cost = Math.round(item.cost * (run.shopDiscount || 1) * saveSystem.getShopPriceMultiplier());
   if (run.gold < cost) return false;
   run.gold -= cost;
   goldSpentTotal += cost;

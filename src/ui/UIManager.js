@@ -515,9 +515,16 @@ export class UIManager {
       notes.push('Family Feast');
     }
 
-    let buttonText = `HEAL ${healVal} HP`;
+    const healMultiplier = saveSystem.getHealingMultiplier();
+    const effectiveHealVal = Math.round(healVal * healMultiplier);
+
+    let buttonText = `HEAL ${effectiveHealVal} HP`;
     if (maxHpVal > 0) {
       buttonText += ` & +${maxHpVal} MAX HP`;
+    }
+
+    if (healMultiplier < 1) {
+      notes.push(`Risk Penalty (-${Math.round((1 - healMultiplier) * 100)}% Heal)`);
     }
 
     const noteHtml = notes.length
