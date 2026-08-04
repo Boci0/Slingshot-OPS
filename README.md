@@ -2,7 +2,7 @@
 
 > A tactical ballistic-combat roguelike built with HTML5 Canvas & JavaScript.
 
-[![Live Demo](https://img.shields.io/badge/Play_Now-Live_Demo-brightgreen?style=for-the-badge&logo=github)](https://muhdboci.github.io/Slingshot-OPS/)
+[![Live Demo](https://img.shields.io/badge/Play_Now-Live_Demo-brightgreen?style=for-the-badge&logo=github)](https://boci0.github.io/Slingshot-OPS/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
@@ -45,7 +45,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/MuhdBoci/Slingshot-OPS.git
+git clone https://github.com/Boci0/Slingshot-OPS.git
 
 # Navigate into the project folder
 cd Slingshot-OPS
