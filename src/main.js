@@ -68,11 +68,7 @@ function setState(next) {
 // ---------- UI callbacks ----------
 
 const ui = new UIManager({
-  onPlay: () => {
-    ui.showBallSelectModal((ballType) => {
-      startNewRun(ballType);
-    });
-  },
+  onPlay: startNewRun,
   onOpenTech: () => {
     setState(State.TECH);
     ui.showTech(techTree, saveSystem);

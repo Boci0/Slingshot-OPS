@@ -126,63 +126,6 @@ export class UIManager {
     if (btn2) btn2.textContent = label;
   }
 
-  showBallSelectModal(onSelect) {
-    const balls = [
-      { id: 'vanguard', name: 'VANGUARD STANDARD', color: '#e0655c', desc: 'Balanced squad ball with standard launch velocity and defense matrix.' },
-      { id: 'cluster', name: 'CLUSTER SPLITTER', color: '#ffb74d', desc: 'Splits into a 2-shard shrapnel cluster on your first wall bounce per turn.' },
-      { id: 'juggernaut', name: 'JUGGERNAUT HEAVY', color: '#4fc3f7', desc: '+45% Radius & Mass, +40% impact DMG, instantly shatters obstacles on hit.' },
-      { id: 'graviton', name: 'GRAVITON DRONE', color: '#c792ea', desc: 'Emits a magnetic gravity pull dragging nearby enemies toward its flight path.' },
-    ];
-
-    let selectedId = 'vanguard';
-
-    const renderContent = () => {
-      let html = '<p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;">Select your operative ball archetype for this operation:</p>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="ball-card-grid">';
-      for (const b of balls) {
-        const isSel = b.id === selectedId;
-        html += `
-          <div class="ball-select-card" data-ball="${b.id}" style="padding:12px;background:${isSel ? 'rgba(255,255,255,0.06)' : 'var(--bg-panel-2)'};border:2px solid ${isSel ? b.color : 'var(--border)'};border-radius:6px;cursor:pointer;transition:all 0.15s;">
-            <div style="font-weight:700;font-size:14px;color:${b.color};margin-bottom:4px;">${b.name}</div>
-            <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">${b.desc}</div>
-          </div>
-        `;
-      }
-      html += '</div>';
-      return html;
-    };
-
-    const attachCardListeners = () => {
-      this.modalBody.querySelectorAll('[data-ball]').forEach((card) => {
-        card.onclick = () => {
-          soundEngine.playUI();
-          selectedId = card.dataset.ball;
-          this.modalBody.querySelectorAll('[data-ball]').forEach((c) => {
-            const isSel = c.dataset.ball === selectedId;
-            const b = balls.find((x) => x.id === c.dataset.ball);
-            c.style.border = `2px solid ${isSel ? b.color : 'var(--border)'}`;
-            c.style.background = isSel ? 'rgba(255,255,255,0.06)' : 'var(--bg-panel-2)';
-          });
-        };
-      });
-    };
-
-    this.openModal('SELECT OPERATIVE BALL', renderContent(),
-      `<div class="btn-row"><button class="btn btn-accent" data-act="confirm" style="width:100%;">LAUNCH OPERATION</button></div>`
-    );
-
-    attachCardListeners();
-
-    const btnConfirm = this.modalActions.querySelector('[data-act="confirm"]');
-    if (btnConfirm) {
-      btnConfirm.onclick = () => {
-        soundEngine.playUI();
-        this.closeModal();
-        onSelect(selectedId);
-      };
-    }
-  }
-
   // ---------- Generic screen switching ----------
 
   showMenu(profile, meta) {
