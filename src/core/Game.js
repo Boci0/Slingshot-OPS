@@ -585,7 +585,7 @@ export class Game {
         this.battleStats.turns += 1;
         this._tickAbilities();
 
-        if (this.techStats.hasForcefield && this.battleStats.turns % 4 === 0) {
+        if (this.techStats.forcefieldTurnInterval > 0 && this.battleStats.turns % this.techStats.forcefieldTurnInterval === 0) {
           this.forcefieldActive = true;
         }
 
@@ -639,8 +639,8 @@ export class Game {
       if (attacker.team === 'player') {
         this.events.emit('player-dealt-damage', { victim, damage });
 
-        if (this.techStats?.hasVampiricVitality && damage > 0) {
-          const rawHeal = Math.max(1, Math.round(damage * 0.25));
+        if (this.techStats?.vampiricVitalityPct > 0 && damage > 0) {
+          const rawHeal = Math.max(1, Math.round(damage * this.techStats.vampiricVitalityPct));
           let effectiveHeal = 0;
           if (this.run) {
             effectiveHeal = this.run.healFlat(rawHeal, this.techStats);
@@ -691,15 +691,17 @@ export class Game {
         }
       }
 
-      if (victim.team === 'player' && this.techStats.hasEmergencyMedkit && !this.medkitUsed && victim.hp > 0 && victim.hp <= victim.maxHp * 0.25) {
+      if (victim.team === 'player' && this.techStats.emergencyMedkitHeal > 0 && !this.medkitUsed && victim.hp > 0 && victim.hp <= victim.maxHp * 0.25) {
         this.medkitUsed = true;
-        victim.hp = Math.min(victim.maxHp, victim.hp + 25);
+        const heal = this.techStats.emergencyMedkitHeal;
+        if (this.run) this.run.healFlat(heal, this.techStats);
+        else victim.hp = Math.min(victim.maxHp, victim.hp + heal);
         soundEngine.playAbility('barrier');
         this.events.emit('emergency-medkit-heal', { hp: victim.hp });
       }
 
-      if (victim.team === 'player' && this.techStats.hasFortifiedMatrix && damage >= 20) {
-        this.collisionSystem.stats.playerTotalDef = (this.collisionSystem.stats.playerTotalDef || 0) + 3;
+      if (victim.team === 'player' && this.techStats.fortifiedMatrixBonusDef > 0 && damage >= 20) {
+        this.collisionSystem.stats.playerTotalDef = (this.collisionSystem.stats.playerTotalDef || 0) + this.techStats.fortifiedMatrixBonusDef;
       }
 
       if (attacker.team === 'player' && this.battleStats.wallBounced) {

@@ -62,16 +62,16 @@ export class RunState {
 
   get atk() {
     let mult = this.atkMult;
-    if (this.permanent?.hasRelicSynergy) {
-      mult += this.relics.length * 0.015;
+    if (this.permanent?.relicAtkPctPerItem > 0) {
+      mult += this.relics.length * this.permanent.relicAtkPctPerItem;
     }
     return (this.baseAtk * mult) / 10;
   }
 
   get totalDef() {
     let base = this.def; // base def from tech tree & boons
-    if (this.permanent?.hasRelicSynergy) {
-      base += this.relics.length * 0.5;
+    if (this.permanent?.relicDefPerItem > 0) {
+      base += this.relics.length * this.permanent.relicDefPerItem;
     }
 
     // Base DEF Relics
@@ -221,9 +221,8 @@ export class RunState {
           this.hp += 15;
           break;
       }
-
-      if (this.permanent?.hasRelicSynergy) {
-        const hpGain = Math.round(RUN.maxHpBase * 0.015);
+      if (this.permanent?.relicHpPctPerItem > 0) {
+        const hpGain = Math.round(RUN.maxHpBase * this.permanent.relicHpPctPerItem);
         this.maxHp += hpGain;
         this.hp += hpGain;
       }
@@ -244,9 +243,8 @@ export class RunState {
     return gained;
   }
 
-  /** Pay gold; false if cannot afford. */
-  spendGold(amount) {
-    const cost = Math.round(amount * this.shopDiscount);
+  /** Spend gold. Returns true if successful. */
+  spendGold(cost) {
     if (this.gold < cost) return false;
     this.gold -= cost;
     this.totalGoldSpent = (this.totalGoldSpent || 0) + cost;
@@ -264,10 +262,11 @@ export class RunState {
     const cap = this.maxHp * capPct;
     const targetHp = Math.min(this.maxHp, this.hp + effective, this.hp + cap);
 
-    if (techStats.hasOverflowShield && (this.hp + effective) > this.maxHp) {
+    if (techStats.overflowShieldCapPct > 0 && (this.hp + effective) > this.maxHp) {
+      const maxShieldCap = Math.round(this.maxHp * techStats.overflowShieldCapPct);
       const overflow = (this.hp + effective) - this.maxHp;
       this.hp = this.maxHp;
-      this.shieldHp = Math.min(this.maxHp, (this.shieldHp || 0) + overflow);
+      this.shieldHp = Math.min(maxShieldCap, (this.shieldHp || 0) + overflow);
     } else {
       this.hp = targetHp;
     }
@@ -276,10 +275,11 @@ export class RunState {
   /** Restore a flat amount up to max HP (respects Risk penalty and Overflow Shielding). */
   healFlat(amount, techStats = {}) {
     const effective = Math.round(amount * saveSystem.getHealingMultiplier());
-    if (techStats.hasOverflowShield && (this.hp + effective) > this.maxHp) {
+    if (techStats.overflowShieldCapPct > 0 && (this.hp + effective) > this.maxHp) {
+      const maxShieldCap = Math.round(this.maxHp * techStats.overflowShieldCapPct);
       const overflow = (this.hp + effective) - this.maxHp;
       this.hp = this.maxHp;
-      this.shieldHp = Math.min(this.maxHp, (this.shieldHp || 0) + overflow);
+      this.shieldHp = Math.min(maxShieldCap, (this.shieldHp || 0) + overflow);
     } else {
       this.hp = Math.min(this.maxHp, this.hp + effective);
     }

@@ -45,8 +45,9 @@ export class CollisionSystem {
     let victimDef = victim.team === 'player' ? (this.stats.playerTotalDef || this.stats.playerDef || 0) : victim.def ?? 0;
     let victimDmgReductionPct = victim.team === 'player' ? (this.stats.playerDamageReductionPct || 0) : 0;
 
-    if (attacker.team === 'player' && this.stats.techStats?.hasArmorPen && victim.team === 'enemy') {
-      victimDef = Math.round(victimDef * 0.5);
+    if (attacker.team === 'player' && this.stats.techStats?.armorPenPct > 0 && victim.team === 'enemy') {
+      const penPct = Math.min(0.9, this.stats.techStats.armorPenPct);
+      victimDef = Math.round(victimDef * (1 - penPct));
     }
 
     const base = speedAPre >= speedBPre ? speedAPre : speedBPre;
@@ -58,8 +59,8 @@ export class CollisionSystem {
       const rels = this.stats.relics || [];
       const tech = this.stats.techStats || {};
 
-      if (tech.hasRiskResonance && this.stats.riskLevel > 0) {
-        const riskBonus = 1 + this.stats.riskLevel * 0.02;
+      if (tech.riskResonanceBonusPerLevel > 0 && this.stats.riskLevel > 0) {
+        const riskBonus = 1 + this.stats.riskLevel * tech.riskResonanceBonusPerLevel;
         baseDamage *= riskBonus;
       }
 
@@ -67,8 +68,9 @@ export class CollisionSystem {
         baseDamage *= 1.4;
       }
 
-      if (tech.hasBallisticApex) {
-        baseDamage *= 1.15;
+      if (tech.ballisticApexMultPer30px > 0 && base > 0) {
+        const apexBonus = 1 + (base / 30) * tech.ballisticApexMultPer30px;
+        baseDamage *= apexBonus;
       }
 
       const stacks = (bs && bs.overdriveStacks) ? bs.overdriveStacks : (bs && bs.overdriveActive ? 1 : 0);
@@ -196,8 +198,8 @@ export class CollisionSystem {
 
     // 2. Percentage Damage Reduction (Relics + Tech Tree Kinetic Dampener)
     let redPct = this.stats.playerDamageReductionPct || 0;
-    if (this.stats.techStats?.hasKineticDampener) {
-      redPct += 0.25;
+    if (this.stats.techStats?.kineticDampenerPct > 0) {
+      redPct += this.stats.techStats.kineticDampenerPct;
     }
     redPct = Math.max(0, Math.min(0.85, redPct));
     damage = Math.max(1, Math.round(damage * (1 - redPct)));

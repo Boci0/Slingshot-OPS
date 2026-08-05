@@ -64,60 +64,79 @@ export class TechTree {
    * Compute permanent stat bonuses and feature flags from all purchased nodes.
    */
   getPermanentStats() {
-    let atkBonus = 0;
-    let baseAtkBonus = 0;
-    let hpBonus = 0;
-    let defBonus = 0;
-    let startGoldBonus = 0;
-
     const sharpshooterLvl = this.getNodeLevel('atk_sharpshooter');
-    atkBonus += sharpshooterLvl * 0.05;
-
     const basePowerLvl = this.getNodeLevel('atk_base_power');
-    baseAtkBonus += basePowerLvl * 0.5;
+    const armorPenLvl = this.getNodeLevel('atk_armor_pen');
+    const riskResonanceLvl = this.getNodeLevel('atk_risk_resonance');
+    const ballisticApexLvl = this.getNodeLevel('atk_ballistic_apex');
 
     const vitLvl = this.getNodeLevel('vit_health');
-    hpBonus += vitLvl * 15;
+    const overflowLvl = this.getNodeLevel('vit_overflow_shield');
+    const medkitLvl = this.getNodeLevel('vit_emergency_medkit');
+    const titanLvl = this.getNodeLevel('vit_titan_core');
+    const vampLvl = this.getNodeLevel('vit_vampiric_vitality');
 
     const aegisLvl = this.getNodeLevel('def_aegis');
-    defBonus += aegisLvl * 1.5;
-
     const matrixPctLvl = this.getNodeLevel('def_matrix_pct');
-    const defPctBonus = matrixPctLvl * 0.05;
-
-    const thornsResistLvl = this.getNodeLevel('def_thorns_resist');
-    const thornsResistPct = thornsResistLvl * 0.15;
+    const thornsLvl = this.getNodeLevel('def_thorns_resist');
+    const forcefieldLvl = this.getNodeLevel('def_forcefield');
+    const fortifiedLvl = this.getNodeLevel('def_fortified_matrix');
+    const dampenerLvl = this.getNodeLevel('def_kinetic_dampener');
 
     const warChestLvl = this.getNodeLevel('tac_war_chest');
-    startGoldBonus += warChestLvl * 8;
+    const merchantLvl = this.getNodeLevel('tac_merchant');
+    const logisticsLvl = this.getNodeLevel('tac_logistics');
+    const intellectLvl = this.getNodeLevel('tac_intellect');
+    const relicLvl = this.getNodeLevel('tac_relic_synergy');
 
     return {
-      atkBonus,
-      baseAtkBonus,
-      hpBonus,
-      defBonus,
-      defPctBonus,
-      thornsResistPct,
-      startGoldBonus,
+      atkBonus: sharpshooterLvl * 0.05,
+      baseAtkBonus: basePowerLvl * 0.5,
+      armorPenPct: armorPenLvl * 0.05,
+      riskResonanceBonusPerLevel: riskResonanceLvl * 0.005,
+      ballisticApexMultPer30px: ballisticApexLvl * 0.002,
 
-      // Feature flags
-      hasArmorPen: this.isPurchased('atk_armor_pen'),
-      hasRiskResonance: this.isPurchased('atk_risk_resonance'),
-      hasBallisticApex: this.isPurchased('atk_ballistic_apex'),
+      hpBonus: vitLvl * 15,
+      overflowShieldCapPct: overflowLvl * 0.10,
+      emergencyMedkitHeal: medkitLvl * 5,
+      titanCoreHealBonusPct: titanLvl * 0.05,
+      titanCoreMaxHpBonus: titanLvl * 2,
+      vampiricVitalityPct: vampLvl * 0.025,
 
-      hasOverflowShield: this.isPurchased('vit_overflow_shield'),
-      hasEmergencyMedkit: this.isPurchased('vit_emergency_medkit'),
-      hasTitanCore: this.isPurchased('vit_titan_core'),
-      hasVampiricVitality: this.isPurchased('vit_vampiric_vitality'),
+      defBonus: aegisLvl * 1.5,
+      defPctBonus: matrixPctLvl * 0.03,
+      thornsResistPct: thornsLvl * 0.05,
+      forcefieldTurnInterval: forcefieldLvl > 0 ? Math.max(3, 14 - forcefieldLvl) : 0,
+      fortifiedMatrixBonusDef: fortifiedLvl * 1,
+      kineticDampenerPct: dampenerLvl * 0.03,
 
-      hasForcefield: this.isPurchased('def_forcefield'),
-      hasFortifiedMatrix: this.isPurchased('def_fortified_matrix'),
-      hasKineticDampener: this.isPurchased('def_kinetic_dampener'),
+      startGoldBonus: warChestLvl * 8,
+      shopDiscountBonus: merchantLvl * 0.02,
+      rerollDiscountBonus: merchantLvl * 0.05,
+      cdReductionTurns: logisticsLvl * 0.2,
+      tpBonusPct: intellectLvl * 0.03,
+      relicAtkPctPerItem: relicLvl * 0.002,
+      relicHpPctPerItem: relicLvl * 0.002,
+      relicDefPerItem: relicLvl * 0.1,
 
-      hasMerchant: this.isPurchased('tac_merchant'),
-      hasLogistics: this.isPurchased('tac_logistics'),
-      hasIntellect: this.isPurchased('tac_intellect'),
-      hasRelicSynergy: this.isPurchased('tac_relic_synergy'),
+      // Backwards-compatible feature flags
+      hasArmorPen: armorPenLvl > 0,
+      hasRiskResonance: riskResonanceLvl > 0,
+      hasBallisticApex: ballisticApexLvl > 0,
+
+      hasOverflowShield: overflowLvl > 0,
+      hasEmergencyMedkit: medkitLvl > 0,
+      hasTitanCore: titanLvl > 0,
+      hasVampiricVitality: vampLvl > 0,
+
+      hasForcefield: forcefieldLvl > 0,
+      hasFortifiedMatrix: fortifiedLvl > 0,
+      hasKineticDampener: dampenerLvl > 0,
+
+      hasMerchant: merchantLvl > 0,
+      hasLogistics: logisticsLvl > 0,
+      hasIntellect: intellectLvl > 0,
+      hasRelicSynergy: relicLvl > 0,
     };
   }
 

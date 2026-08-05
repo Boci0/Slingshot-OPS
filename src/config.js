@@ -323,32 +323,32 @@ export const CONFIG = {
   techTree: {
     // ATK branch
     atk_sharpshooter: { id: 'atk_sharpshooter', label: 'Sharpshooter', desc: 'Increases damage dealt (+5% per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'atk', icon: '[+]', requires: null },
-    atk_base_power: { id: 'atk_base_power', label: 'Base ATK Core', desc: 'Increases squad Base ATK (+0.5 Base ATK per rank)', maxLevel: 5, costs: [10, 15, 20, 25, 30], branch: 'atk', icon: '[ATK]', requires: 'atk_sharpshooter' },
-    atk_armor_pen: { id: 'atk_armor_pen', label: 'Armor Penetration', desc: 'Direct ball impacts ignore 50% of enemy DEF', maxLevel: 1, costs: [20], branch: 'atk', icon: '[PEN]', requires: 'atk_base_power' },
-    atk_risk_resonance: { id: 'atk_risk_resonance', label: 'Risk Resonance', desc: 'Damage Collectibles deal +2% extra damage per Risk Level', maxLevel: 1, costs: [24], branch: 'atk', icon: '[R]', requires: 'atk_armor_pen' },
-    atk_ballistic_apex: { id: 'atk_ballistic_apex', label: 'Ballistic Apex', desc: 'Impact damage increases with launch distance (+1% per 30px)', maxLevel: 1, costs: [28], branch: 'atk', icon: '[^]', requires: 'atk_risk_resonance' },
+    atk_base_power: { id: 'atk_base_power', label: 'Base ATK Core', desc: 'Increases squad Base ATK (+0.5 Base ATK per rank)', maxLevel: 10, costs: [8, 12, 16, 20, 26, 32, 40, 48, 58, 70], branch: 'atk', icon: '[ATK]', requires: 'atk_sharpshooter' },
+    atk_armor_pen: { id: 'atk_armor_pen', label: 'Armor Penetration', desc: 'Direct ball impacts ignore enemy DEF (+5% per rank)', maxLevel: 10, costs: [10, 14, 18, 24, 30, 38, 46, 56, 68, 82], branch: 'atk', icon: '[PEN]', requires: 'atk_base_power' },
+    atk_risk_resonance: { id: 'atk_risk_resonance', label: 'Risk Resonance', desc: 'Deals extra damage per Risk Level (+0.5% per rank)', maxLevel: 10, costs: [12, 16, 20, 26, 34, 42, 52, 64, 78, 94], branch: 'atk', icon: '[R]', requires: 'atk_armor_pen' },
+    atk_ballistic_apex: { id: 'atk_ballistic_apex', label: 'Ballistic Apex', desc: 'Impact damage increases with launch distance (+0.2% per 30px per rank)', maxLevel: 10, costs: [14, 18, 24, 30, 38, 48, 60, 74, 90, 108], branch: 'atk', icon: '[^]', requires: 'atk_risk_resonance' },
 
     // VITALITY branch
     vit_health: { id: 'vit_health', label: 'Vitality', desc: 'Increases Max HP (+15 HP per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'vit', icon: '[HP]', requires: null },
-    vit_overflow_shield: { id: 'vit_overflow_shield', label: 'Overflow Shielding', desc: 'Excess healing converts to Shield HP (up to 100% Max HP)', maxLevel: 1, costs: [24], branch: 'vit', icon: '[SHD]', requires: 'vit_health' },
-    vit_emergency_medkit: { id: 'vit_emergency_medkit', label: 'Emergency Medkit', desc: 'Restore 25 HP immediately when dropping below 25% HP', maxLevel: 1, costs: [22], branch: 'vit', icon: '[MED]', requires: 'vit_overflow_shield' },
-    vit_titan_core: { id: 'vit_titan_core', label: 'Titan Core', desc: 'Safe Zone nodes restore +50% more HP and gain +10 Max HP', maxLevel: 1, costs: [26], branch: 'vit', icon: '[CORE]', requires: 'vit_emergency_medkit' },
-    vit_vampiric_vitality: { id: 'vit_vampiric_vitality', label: 'Vampiric Vitality', desc: 'Absorbs 25% of all damage dealt as healing (affected by Risk healing penalty)', maxLevel: 1, costs: [28], branch: 'vit', icon: '[VAMP]', requires: 'vit_titan_core' },
+    vit_overflow_shield: { id: 'vit_overflow_shield', label: 'Overflow Shielding', desc: 'Excess healing converts to Shield HP (+10% max HP cap per rank)', maxLevel: 10, costs: [8, 12, 16, 20, 26, 32, 40, 48, 58, 70], branch: 'vit', icon: '[SHD]', requires: 'vit_health' },
+    vit_emergency_medkit: { id: 'vit_emergency_medkit', label: 'Emergency Medkit', desc: 'Restore HP when dropping below 25% HP (+5 HP per rank)', maxLevel: 10, costs: [10, 14, 18, 24, 30, 38, 46, 56, 68, 82], branch: 'vit', icon: '[MED]', requires: 'vit_overflow_shield' },
+    vit_titan_core: { id: 'vit_titan_core', label: 'Titan Core', desc: 'Safe Zone nodes restore more HP (+5% per rank) & gain Max HP (+2 per rank)', maxLevel: 10, costs: [12, 16, 20, 26, 34, 42, 52, 64, 78, 94], branch: 'vit', icon: '[CORE]', requires: 'vit_emergency_medkit' },
+    vit_vampiric_vitality: { id: 'vit_vampiric_vitality', label: 'Vampiric Vitality', desc: 'Absorbs damage dealt as healing (+2.5% per rank, affected by Risk)', maxLevel: 10, costs: [14, 18, 24, 30, 38, 48, 60, 74, 90, 108], branch: 'vit', icon: '[VAMP]', requires: 'vit_titan_core' },
 
     // DEFENSE branch
     def_aegis: { id: 'def_aegis', label: 'Aegis', desc: 'Increases Base DEF (+1.5 Base DEF per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'def', icon: '[DEF]', requires: null },
-    def_matrix_pct: { id: 'def_matrix_pct', label: 'Aegis Amplifier', desc: 'Increases Total DEF (+5% DEF per rank)', maxLevel: 5, costs: [12, 18, 26, 36, 48], branch: 'def', icon: '[DEF%]', requires: 'def_aegis' },
-    def_thorns_resist: { id: 'def_thorns_resist', label: 'Thorns Dampener', desc: 'Reduces enemy reflect/thorns damage taken (-15% per rank)', maxLevel: 3, costs: [16, 22, 30], branch: 'def', icon: '[THN]', requires: 'def_matrix_pct' },
-    def_forcefield: { id: 'def_forcefield', label: 'Forcefield Barrier', desc: 'Generates a Forcefield Bubble that blocks 1 attack every 4 turns', maxLevel: 1, costs: [26], branch: 'def', icon: '[FLD]', requires: 'def_thorns_resist' },
-    def_fortified_matrix: { id: 'def_fortified_matrix', label: 'Fortified Matrix', desc: 'Taking heavy hits (>20 DMG) grants +3 bonus DEF for the turn', maxLevel: 1, costs: [22], branch: 'def', icon: '[MTX]', requires: 'def_forcefield' },
-    def_kinetic_dampener: { id: 'def_kinetic_dampener', label: 'Kinetic Dampener', desc: 'Takes 25% reduced damage from collisions & wall bounces', maxLevel: 1, costs: [20], branch: 'def', icon: '[KIN]', requires: 'def_fortified_matrix' },
+    def_matrix_pct: { id: 'def_matrix_pct', label: 'Aegis Amplifier', desc: 'Increases Total DEF (+3% DEF per rank)', maxLevel: 10, costs: [8, 12, 16, 20, 26, 32, 40, 48, 58, 70], branch: 'def', icon: '[DEF%]', requires: 'def_aegis' },
+    def_thorns_resist: { id: 'def_thorns_resist', label: 'Thorns Dampener', desc: 'Reduces enemy reflect/thorns damage taken (-5% per rank)', maxLevel: 10, costs: [10, 14, 18, 24, 30, 38, 46, 56, 68, 82], branch: 'def', icon: '[THN]', requires: 'def_matrix_pct' },
+    def_forcefield: { id: 'def_forcefield', label: 'Forcefield Barrier', desc: 'Generates a Forcefield Bubble blocking 1 attack (cooldown -1 turn per rank)', maxLevel: 10, costs: [12, 16, 20, 26, 34, 42, 52, 64, 78, 94], branch: 'def', icon: '[FLD]', requires: 'def_thorns_resist' },
+    def_fortified_matrix: { id: 'def_fortified_matrix', label: 'Fortified Matrix', desc: 'Taking heavy hits (>20 DMG) grants bonus DEF (+1 DEF per rank)', maxLevel: 10, costs: [14, 18, 24, 30, 38, 48, 60, 74, 90, 108], branch: 'def', icon: '[MTX]', requires: 'def_forcefield' },
+    def_kinetic_dampener: { id: 'def_kinetic_dampener', label: 'Kinetic Dampener', desc: 'Takes reduced damage from collisions & wall bounces (-3% per rank)', maxLevel: 10, costs: [16, 20, 26, 34, 44, 56, 70, 86, 104, 124], branch: 'def', icon: '[KIN]', requires: 'def_fortified_matrix' },
 
     // TACTICS branch
     tac_war_chest: { id: 'tac_war_chest', label: 'War Chest', desc: 'Increases Starting Gold (+8 Gold per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'tac', icon: '[GOLD]', requires: null },
-    tac_merchant: { id: 'tac_merchant', label: 'Merchant Network', desc: 'Collectibles in shop cost 15% less and Rerolls cost 50% less', maxLevel: 1, costs: [20], branch: 'tac', icon: '[SHOP]', requires: 'tac_war_chest' },
-    tac_logistics: { id: 'tac_logistics', label: 'Field Logistics', desc: 'Squad ability cooldowns reduced by 1 turn', maxLevel: 1, costs: [24], branch: 'tac', icon: '[LOG]', requires: 'tac_merchant' },
-    tac_intellect: { id: 'tac_intellect', label: 'Tactical Intellect', desc: 'Earn +25% extra Tech Points from all sources and quests', maxLevel: 1, costs: [22], branch: 'tac', icon: '[TP]', requires: 'tac_logistics' },
-    tac_relic_synergy: { id: 'tac_relic_synergy', label: 'Relic Synergy', desc: 'Grants +1.5% ATK, +1.5% Max HP, and +0.5 DEF for every Collectible owned in your run', maxLevel: 1, costs: [26], branch: 'tac', icon: '[SYN]', requires: 'tac_intellect' },
+    tac_merchant: { id: 'tac_merchant', label: 'Merchant Network', desc: 'Shop prices cost less (-2% per rank) & Rerolls cost less (-5% per rank)', maxLevel: 10, costs: [8, 12, 16, 20, 26, 32, 40, 48, 58, 70], branch: 'tac', icon: '[SHOP]', requires: 'tac_war_chest' },
+    tac_logistics: { id: 'tac_logistics', label: 'Field Logistics', desc: 'Squad ability cooldowns reduced (-0.2 turns per rank)', maxLevel: 10, costs: [10, 14, 18, 24, 30, 38, 46, 56, 68, 82], branch: 'tac', icon: '[LOG]', requires: 'tac_merchant' },
+    tac_intellect: { id: 'tac_intellect', label: 'Tactical Intellect', desc: 'Earn extra Tech Points from all sources (+3% per rank)', maxLevel: 10, costs: [12, 16, 20, 26, 34, 42, 52, 64, 78, 94], branch: 'tac', icon: '[TP]', requires: 'tac_logistics' },
+    tac_relic_synergy: { id: 'tac_relic_synergy', label: 'Relic Synergy', desc: 'Grants +0.2% ATK, +0.2% Max HP, and +0.1 DEF per Collectible per rank', maxLevel: 10, costs: [14, 18, 24, 30, 38, 48, 60, 74, 90, 108], branch: 'tac', icon: '[SYN]', requires: 'tac_intellect' },
   },
 
   // --- Roguelike boons (collected as map rewards) ---
