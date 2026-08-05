@@ -874,6 +874,10 @@ body {
   color: var(--text-bright);
 }
 
+#btn-audio-toggle {
+  pointer-events: auto;
+}
+
 .battle-abilities {
   display: flex;
   gap: 10px;
