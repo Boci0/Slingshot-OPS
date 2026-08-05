@@ -119,7 +119,7 @@ export class UIManager {
 
   updateAudioButtons() {
     const isMuted = soundEngine.muted;
-    const label = isMuted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+    const label = isMuted ? '[AUDIO: OFF]' : '[AUDIO: ON]';
     const btn1 = document.getElementById('btn-audio-toggle');
     const btn2 = document.getElementById('btn-audio-menu');
     if (btn1) btn1.textContent = label;
@@ -128,10 +128,10 @@ export class UIManager {
 
   showBallSelectModal(onSelect) {
     const balls = [
-      { id: 'vanguard', name: '⚡ VANGUARD STANDARD', color: '#e0655c', desc: 'Balanced squad ball with standard launch velocity and defense matrix.' },
-      { id: 'cluster', name: '💥 CLUSTER SPLITTER', color: '#ffb74d', desc: 'Splits into a 2-shard shrapnel cluster on your first wall bounce per turn.' },
-      { id: 'juggernaut', name: '🛡️ JUGGERNAUT HEAVY', color: '#4fc3f7', desc: '+45% Radius & Mass, +25% impact DMG, instantly shatters obstacles on hit.' },
-      { id: 'graviton', name: '🧲 GRAVITON DRONE', color: '#c792ea', desc: 'Emits a magnetic gravity pull dragging nearby enemies toward its flight path.' },
+      { id: 'vanguard', name: 'VANGUARD STANDARD', color: '#e0655c', desc: 'Balanced squad ball with standard launch velocity and defense matrix.' },
+      { id: 'cluster', name: 'CLUSTER SPLITTER', color: '#ffb74d', desc: 'Splits into a 2-shard shrapnel cluster on your first wall bounce per turn.' },
+      { id: 'juggernaut', name: 'JUGGERNAUT HEAVY', color: '#4fc3f7', desc: '+45% Radius & Mass, +40% impact DMG, instantly shatters obstacles on hit.' },
+      { id: 'graviton', name: 'GRAVITON DRONE', color: '#c792ea', desc: 'Emits a magnetic gravity pull dragging nearby enemies toward its flight path.' },
     ];
 
     let selectedId = 'vanguard';

@@ -61,6 +61,10 @@ export class CollisionSystem {
         baseDamage *= riskBonus;
       }
 
+      if (attacker.ballType === 'juggernaut') {
+        baseDamage *= 1.4;
+      }
+
       if (tech.hasBallisticApex) {
         baseDamage *= 1.15;
       }

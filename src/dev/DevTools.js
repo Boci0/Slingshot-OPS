@@ -1,6 +1,6 @@
 // ============================================================
 // DevTools — Developer Debug & Balancing Panel
-// Toggle with ~ (Backquote) or by clicking the 🛠️ DEV floating badge.
+// Toggle with ~ (Backquote) or by clicking the [DEV] floating badge.
 // Designed for easy removal by deleting this file & its 1-line import in main.js.
 // ============================================================
 
@@ -27,7 +27,7 @@ export class DevTools {
     // Floating Dev Badge Button
     const badge = document.createElement('button');
     badge.id = 'dev-tools-badge';
-    badge.innerHTML = '🛠️ DEV';
+    badge.innerHTML = '[DEV]';
     badge.style.cssText = `
       position: fixed;
       top: 10px;
@@ -71,7 +71,7 @@ export class DevTools {
 
     panel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(232,169,76,0.3);padding-bottom:8px;margin-bottom:12px;">
-        <span style="font-family:monospace;font-weight:700;color:#e8a94c;letter-spacing:1px;">🛠️ GAME BALANCER & DEBUG</span>
+        <span style="font-family:monospace;font-weight:700;color:#e8a94c;letter-spacing:1px;">[DEV] GAME BALANCER & DEBUG</span>
         <button id="dev-close" style="background:none;border:none;color:#8a94a8;cursor:pointer;font-weight:bold;">✕</button>
       </div>
 

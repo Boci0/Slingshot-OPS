@@ -35,7 +35,7 @@ export function integrate(ball, dt) {
  */
 export function resolveWorldCollisions(ball) {
   const events = [];
-  const r = B.radius;
+  const r = ball.radius || B.radius;
 
   // Ground
   if (ball.y + r > W.groundY) {
@@ -79,7 +79,9 @@ export function resolveBallCollision(a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const dist = Math.hypot(dx, dy);
-  const minDist = B.radius * 2;
+  const rA = a.radius || B.radius;
+  const rB = b.radius || B.radius;
+  const minDist = rA + rB;
 
   if (dist >= minDist || dist === 0) return null;
 
@@ -123,7 +125,7 @@ export function resolveBallCollision(a, b) {
  */
 export function resolveBarrierCollisions(ball, barriers) {
   const events = [];
-  const r = B.radius;
+  const r = ball.radius || B.radius;
 
   for (const barrier of barriers) {
     if (!barrier.active) continue;
@@ -157,7 +159,12 @@ export function resolveBarrierCollisions(ball, barriers) {
     const velDot = ball.vx * nx + ball.vy * ny;
     if (velDot < 0) {
       const impactSpeed = Math.abs(velDot);
-      if (barrier.maxHp && impactSpeed >= 30) {
+
+      // Juggernaut Heavy Ball instantly shatters obstacle blocks
+      if (ball.ballType === 'juggernaut' || ball.isShard) {
+        barrier.hp = 0;
+        barrier.active = false;
+      } else if (barrier.maxHp && impactSpeed >= 30) {
         const dmg = Math.round(impactSpeed * 0.15);
         barrier.hp = Math.max(0, (barrier.hp ?? barrier.maxHp) - dmg);
         if (barrier.hp <= 0) barrier.active = false;
@@ -166,6 +173,7 @@ export function resolveBarrierCollisions(ball, barriers) {
         barrier.hp = Math.max(0, (barrier.hp ?? CONFIG.damage.barrierHp) - dmg);
         if (barrier.hp <= 0) barrier.active = false;
       }
+
       ball.vx -= (1 + W.wallRestitution) * velDot * nx;
       ball.vy -= (1 + W.wallRestitution) * velDot * ny;
       events.push({ type: 'barrier', ball, barrier, side: { nx, ny }, impactSpeed });
@@ -175,18 +183,12 @@ export function resolveBarrierCollisions(ball, barriers) {
   return events;
 }
 
-/**
- * Step the physics for a single ball (forces + integration + world collisions).
- */
 export function stepBall(ball, dt) {
   applyForces(ball, dt);
   integrate(ball, dt);
   return resolveWorldCollisions(ball);
 }
 
-/**
- * Step the full simulation for a list of balls, including barriers, platforms, and obstacles.
- */
 export function stepWorld(balls, dt, barriers = [], platforms = [], obstacles = []) {
   const events = [];
 
