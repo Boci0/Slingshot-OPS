@@ -1105,6 +1105,7 @@ function updateRiskDisplay(val) {
     if (risk.minusHeal > 0) badges.push(`<span class="risk-badge risk-badge-heal">-${risk.minusHeal}% HEAL</span>`);
     if (risk.plusCost > 0) badges.push(`<span class="risk-badge risk-badge-cost">+${risk.plusCost}% SHOP COST</span>`);
     if (risk.minusGold > 0) badges.push(`<span class="risk-badge risk-badge-gold">-${risk.minusGold}% GOLD</span>`);
+    if (risk.plusDmgTaken > 0) badges.push(`<span class="risk-badge risk-badge-enemy">+${risk.plusDmgTaken}% DMG TAKEN</span>`);
     badges.push(`<span class="risk-badge risk-badge-tp">+${tpBonus}% TP</span>`);
 
     bonusEl.innerHTML = badges.join('');
