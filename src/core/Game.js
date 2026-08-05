@@ -1,8 +1,8 @@
 // ============================================================
 // Game — orchestrates the full game loop: turn flow, physics
 // stepping, collisions, damage, AI, input, sound effects, and rendering.
-// Supports multi-enemy battles, arena obstacles, platforms, screen shake,
-// and battle configurations injected by the roguelike App.
+// Supports multi-enemy battles, operative ball archetypes (Vanguard, Cluster,
+// Juggernaut, Graviton), arena obstacles, platforms, and screen shake.
 // ============================================================
 
 import { CONFIG } from '../config.js';
@@ -29,6 +29,7 @@ const DEFAULT_BATTLE = {
   ],
   relics: [],
   nodeType: 'combat',
+  ballType: 'vanguard',
   floor: 1,
 };
 
@@ -68,6 +69,7 @@ export class Game {
       playerDamageTaken: 0,
       wallBounced: false,
       echoUsed: false,
+      clusteredThisTurn: false,
     };
   }
 
@@ -85,6 +87,7 @@ export class Game {
       enemies: (opts.enemies && opts.enemies.length ? opts.enemies : DEFAULT_BATTLE.enemies),
       relics: opts.relics || [],
       nodeType: opts.nodeType || 'combat',
+      ballType: opts.ballType || 'vanguard',
       floor: opts.floor || 1,
     };
     this.reset(merged);
@@ -96,16 +99,39 @@ export class Game {
     this.battleStats = this._freshBattleStats();
     this.relics = config.relics || [];
 
-    const groundY = W.groundY - B.radius;
+    const ballType = config.ballType || 'vanguard';
+    let pRadius = B.radius;
+    let pColor = C.player;
+    let pDark = C.playerDark;
+    let pName = 'YOU';
+
+    if (ballType === 'juggernaut') {
+      pRadius = Math.round(B.radius * 1.45);
+      pColor = '#4fc3f7';
+      pDark = '#0288d1';
+      pName = 'JUGGERNAUT';
+    } else if (ballType === 'cluster') {
+      pColor = '#ffb74d';
+      pDark = '#f57c00';
+      pName = 'CLUSTER';
+    } else if (ballType === 'graviton') {
+      pColor = '#c792ea';
+      pDark = '#7b1fa2';
+      pName = 'GRAVITON';
+    }
+
+    const groundY = W.groundY - pRadius;
 
     this.player = new Ball({
       x: W.width * 0.25,
       y: groundY,
       team: 'player',
-      color: C.player,
-      darkColor: C.playerDark,
+      radius: pRadius,
+      color: pColor,
+      darkColor: pDark,
       maxHp: config.player.maxHp || B.maxHp,
-      displayName: 'YOU',
+      displayName: pName,
+      ballType,
     });
     if (config.player.hp !== undefined) {
       this.player.hp = Math.max(1, Math.min(this.player.maxHp, config.player.hp));
@@ -233,6 +259,7 @@ export class Game {
   }
 
   _startPlayerTurn() {
+    this.battleStats.clusteredThisTurn = false;
     this.turnSystem.startPlayerTurn();
     this.slingshotInput.cancelPlacement();
     this.slingshotInput.setActive(true);
@@ -288,7 +315,6 @@ export class Game {
     }
 
     let aiDifficulty = enemy.aiDifficulty ?? 0.5;
-    // Cryo Coil: frozen enemies take turns with reduced speed/precision
     if (enemy.isFrozen) {
       aiDifficulty = Math.max(0.2, aiDifficulty - 0.3);
     }
@@ -365,7 +391,7 @@ export class Game {
       if (enemy.isFrozen) {
         velocity.x *= 0.65;
         velocity.y *= 0.65;
-        enemy.isFrozen = false; // consume freeze
+        enemy.isFrozen = false;
       }
 
       enemy.vx = velocity.x;
@@ -471,8 +497,31 @@ export class Game {
       soundEngine.playWallBounce();
       if (ball.team === 'player') {
         this.battleStats.wallBounced = true;
+        if ((ball.ballType === 'cluster' || this.relics.includes('rel_cluster')) && !this.battleStats.clusteredThisTurn) {
+          this.battleStats.clusteredThisTurn = true;
+          this._spawnClusterShards(ball);
+        }
       }
     });
+  }
+
+  _spawnClusterShards(ball) {
+    soundEngine.playAbility('overdrive');
+    this.renderer.addScreenShake(8);
+    for (let i = 0; i < 2; i++) {
+      const angle = Math.atan2(ball.vy, ball.vx) + (i === 0 ? -0.35 : 0.35);
+      const speed = Math.hypot(ball.vx, ball.vy) * 0.8;
+      this.particles.push({
+        x: ball.x,
+        y: ball.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 5,
+        color: '#ffb74d',
+        life: 0.6,
+        maxLife: 0.6,
+      });
+    }
   }
 
   _checkBattleEnd(victim) {
@@ -532,8 +581,24 @@ export class Game {
 
     this._updateParticles(dt);
 
-    this.player.update(dt);
+    if (this.player) this.player.update(dt);
     for (const enemy of this.enemies) enemy.update(dt);
+
+    // Graviton magnetic pull while player ball is flying
+    if (this.player && this.player.ballType === 'graviton' && this.turnSystem.isFlying) {
+      for (const enemy of this.enemies) {
+        if (enemy.hp > 0) {
+          const dx = this.player.x - enemy.x;
+          const dy = this.player.y - enemy.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          if (dist < 340) {
+            const pullForce = (1 - dist / 340) * 200 * dt;
+            enemy.vx += (dx / dist) * pullForce;
+            enemy.vy += (dy / dist) * pullForce;
+          }
+        }
+      }
+    }
 
     if (!this.running) return;
 

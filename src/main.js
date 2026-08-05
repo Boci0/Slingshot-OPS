@@ -68,7 +68,11 @@ function setState(next) {
 // ---------- UI callbacks ----------
 
 const ui = new UIManager({
-  onPlay: startNewRun,
+  onPlay: () => {
+    ui.showBallSelectModal((ballType) => {
+      startNewRun(ballType);
+    });
+  },
   onOpenTech: () => {
     setState(State.TECH);
     ui.showTech(techTree, saveSystem);
@@ -233,9 +237,10 @@ function updateAbilityHud() {
 
 // ---------- Run flow ----------
 
-function startNewRun() {
+function startNewRun(ballType = 'vanguard') {
   runSeed = Math.floor(Math.random() * 100000) + 1;
   run = new RunState(techTree.getPermanentStats());
+  run.ballType = ballType;
   map = new RogueMap(runSeed);
   questSystem = new QuestSystem(saveSystem, runSeed);
   currentFloorView = 0;
@@ -490,8 +495,10 @@ function startCombat(node) {
     enemies,
     relics: run.relics,
     nodeType: node.type,
+    ballType: run.ballType || 'vanguard',
     techStats: techTree.getPermanentStats(),
     riskLevel: riskLevel,
+    floor: run.floor + 1,
   };
 
   // Wire quest hooks (clear old listeners first so no stacking)
