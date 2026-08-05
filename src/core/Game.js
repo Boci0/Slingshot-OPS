@@ -170,6 +170,8 @@ export class Game {
     this.collisionSystem.setStats({
       playerAtk: config.player.atk ?? 1,
       playerDef: config.player.def ?? 0,
+      playerTotalDef: config.player.totalDef ?? config.player.def ?? 0,
+      playerDamageReductionPct: config.player.damageReductionPct ?? 0,
       relics: this.relics,
       battleStats: this.battleStats,
       techStats: this.techStats,
@@ -510,7 +512,7 @@ export class Game {
       }
 
       if (victim.team === 'player' && this.techStats.hasFortifiedMatrix && damage >= 20) {
-        this.collisionSystem.stats.playerDef = (this.battleConfig?.player?.def || 0) + 3;
+        this.collisionSystem.stats.playerTotalDef = (this.collisionSystem.stats.playerTotalDef || 0) + 3;
       }
 
       if (attacker.team === 'player' && this.battleStats.wallBounced) {

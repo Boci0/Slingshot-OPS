@@ -497,6 +497,8 @@ function startCombat(node) {
       hp: run.hp, // carry current run HP into battle
       atk: run.atk,
       def: run.def,
+      totalDef: run.totalDef,
+      damageReductionPct: run.damageReductionPct,
     },
     enemies,
     relics: run.relics,

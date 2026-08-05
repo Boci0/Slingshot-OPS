@@ -64,6 +64,44 @@ export class RunState {
     return (this.baseAtk * this.atkMult) / 10;
   }
 
+  get totalDef() {
+    let base = this.def; // base def from tech tree & boons
+
+    // Base DEF Relics
+    if (this.relics.includes('rel_heavy_armor')) base += 8;
+    if (this.relics.includes('rel_calcifying_gel')) base += 5;
+    if (this.relics.includes('rel_victoria_crown')) base += 3;
+    if (this.relics.includes('rel_tactical_edge')) base += 2;
+    if (this.relics.includes('rel_plating')) base += 2;
+    if (this.relics.includes('rel_titan_plate')) base += 8;
+    if (this.relics.includes('rel_bulwark_core')) base += 12;
+    if (this.relics.includes('rel_bastion_shield')) base += 16;
+    if (this.relics.includes('rel_goliath_carapace')) base += 10;
+    if (this.relics.includes('rel_fortress_seal')) base += 15;
+    if (this.relics.includes('rel_apex_bulwark')) base += 20;
+    if (this.relics.includes('rel_originium_cube')) base += 5;
+
+    // DEF% Bonuses (Tech Tree & Relics)
+    let pct = this.permanent?.defPctBonus || 0;
+    if (this.relics.includes('rel_nanite_weave')) pct += 0.25;
+    if (this.relics.includes('rel_harmonic_barrier')) pct += 0.40;
+    if (this.relics.includes('rel_overcharged_plating')) pct += 0.60;
+    if (this.relics.includes('rel_goliath_carapace')) pct += 0.30;
+    if (this.relics.includes('rel_fortress_seal')) pct += 0.45;
+    if (this.relics.includes('rel_apex_bulwark')) pct += 0.60;
+
+    return Math.round(base * (1 + pct));
+  }
+
+  get damageReductionPct() {
+    let pct = 0;
+    if (this.relics.includes('rel_kinetic_absorber')) pct += 0.15;
+    if (this.relics.includes('rel_stasis_field')) pct += 0.25;
+    if (this.relics.includes('rel_calcifying_gel')) pct += 0.10;
+    if (this.relics.includes('rel_bear_claw')) pct -= 0.10;
+    return Math.max(0, Math.min(0.85, pct));
+  }
+
   get floorProgress() {
     return `${this.floor + 1}/${CONFIG.map.floors}`;
   }

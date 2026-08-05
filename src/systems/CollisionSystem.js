@@ -42,10 +42,11 @@ export class CollisionSystem {
     const victim = attacker === a ? b : a;
 
     const attackerAtk = attacker.team === 'player' ? this.stats.playerAtk : attacker.atk ?? 1;
-    let victimDef = victim.team === 'player' ? this.stats.playerDef : victim.def ?? 0;
+    let victimDef = victim.team === 'player' ? (this.stats.playerTotalDef || this.stats.playerDef || 0) : victim.def ?? 0;
+    let victimDmgReductionPct = victim.team === 'player' ? (this.stats.playerDamageReductionPct || 0) : 0;
 
     if (attacker.team === 'player' && this.stats.techStats?.hasArmorPen && victim.team === 'enemy') {
-      victimDef *= 0.5;
+      victimDef = Math.round(victimDef * 0.5);
     }
 
     const base = speedAPre >= speedBPre ? speedAPre : speedBPre;
@@ -136,12 +137,14 @@ export class CollisionSystem {
       }
     }
 
-    const defenseReduction = victimDef * D.defensePerPoint;
-    let finalDamage = Math.max(1, Math.round(baseDamage * (1 - defenseReduction)));
+    // Direct Flat DEF Subtraction
+    let damageAfterDef = Math.max(1, baseDamage - victimDef);
 
     if (victim.team === 'player' && this.stats.techStats?.hasKineticDampener) {
-      finalDamage = Math.max(1, Math.round(finalDamage * 0.75));
+      victimDmgReductionPct += 0.25;
     }
+
+    let finalDamage = Math.max(1, Math.round(damageAfterDef * (1 - victimDmgReductionPct)));
 
     if (attacker.team === 'player' && this.stats.relics?.includes('rel_syndicate_blade') && victim.archetype !== 'boss' && victim.displayName !== 'SECTOR COMMANDER') {
       const remainingHp = victim.hp - finalDamage;
@@ -152,18 +155,23 @@ export class CollisionSystem {
 
     let isThorn = false;
     if (victim.team === 'enemy' && victim.archetype === 'tank') {
-      let reflected = Math.max(1, Math.round(finalDamage * D.thornsReturn));
+      let rawReflected = Math.max(1, Math.round(finalDamage * D.thornsReturn));
+
+      // Thorns now affected by player's Total DEF!
+      const playerDef = this.stats.playerTotalDef || this.stats.playerDef || 0;
+      let reflectedAfterDef = Math.max(1, rawReflected - playerDef);
+
       const thornsResist = this.stats.techStats?.thornsResistPct || 0;
-      if (thornsResist > 0) {
-        reflected = Math.max(0, Math.round(reflected * (1 - thornsResist)));
-      }
-      if (attacker.team === 'player' && attacker.hitCooldown <= 0 && reflected > 0) {
-        attacker.takeDamage(reflected);
+      const playerDmgRed = this.stats.playerDamageReductionPct || 0;
+      let finalReflected = Math.max(0, Math.round(reflectedAfterDef * (1 - thornsResist) * (1 - playerDmgRed)));
+
+      if (attacker.team === 'player' && attacker.hitCooldown <= 0 && finalReflected > 0) {
+        attacker.takeDamage(finalReflected);
         attacker.flashTimer = 0.15;
         this.events.emit('damage', {
           attacker: victim,
           victim: attacker,
-          damage: reflected,
+          damage: finalReflected,
           killed: attacker.hp <= 0,
           isThorn: true,
         });

@@ -297,8 +297,9 @@ export const CONFIG = {
     vit_titan_core: { id: 'vit_titan_core', label: 'Titan Core', desc: 'Safe Zone nodes restore +50% more HP and gain +10 Max HP', maxLevel: 1, costs: [26], branch: 'vit', icon: '[CORE]', requires: 'vit_emergency_medkit' },
 
     // DEFENSE branch
-    def_aegis: { id: 'def_aegis', label: 'Aegis', desc: 'Increases DEF (+1 DEF per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'def', icon: '[DEF]', requires: null },
-    def_thorns_resist: { id: 'def_thorns_resist', label: 'Thorns Dampener', desc: 'Reduces enemy reflect/thorns damage taken (-15% per rank)', maxLevel: 3, costs: [16, 22, 30], branch: 'def', icon: '[THN]', requires: 'def_aegis' },
+    def_aegis: { id: 'def_aegis', label: 'Aegis', desc: 'Increases Base DEF (+1.5 Base DEF per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'def', icon: '[DEF]', requires: null },
+    def_matrix_pct: { id: 'def_matrix_pct', label: 'Aegis Amplifier', desc: 'Increases Total DEF (+5% DEF per rank)', maxLevel: 5, costs: [12, 18, 26, 36, 48], branch: 'def', icon: '[DEF%]', requires: 'def_aegis' },
+    def_thorns_resist: { id: 'def_thorns_resist', label: 'Thorns Dampener', desc: 'Reduces enemy reflect/thorns damage taken (-15% per rank)', maxLevel: 3, costs: [16, 22, 30], branch: 'def', icon: '[THN]', requires: 'def_matrix_pct' },
     def_forcefield: { id: 'def_forcefield', label: 'Forcefield Barrier', desc: 'Generates a Forcefield Bubble that blocks 1 attack every 4 turns', maxLevel: 1, costs: [26], branch: 'def', icon: '[FLD]', requires: 'def_thorns_resist' },
     def_fortified_matrix: { id: 'def_fortified_matrix', label: 'Fortified Matrix', desc: 'Taking heavy hits (>20 DMG) grants +3 bonus DEF for the turn', maxLevel: 1, costs: [22], branch: 'def', icon: '[MTX]', requires: 'def_forcefield' },
     def_kinetic_dampener: { id: 'def_kinetic_dampener', label: 'Kinetic Dampener', desc: 'Takes 25% reduced damage from collisions & wall bounces', maxLevel: 1, costs: [20], branch: 'def', icon: '[KIN]', requires: 'def_fortified_matrix' },
@@ -382,6 +383,19 @@ export const CONFIG = {
     { id: 'rel_syndicate_blade', name: 'Shadow Stiletto', desc: 'Instantly execute non-boss enemies hit under 15% HP', cost: 35, icon: '[/]', category: 'Shadow' },
     { id: 'rel_shadow_cloak', name: 'Shadow Cloak', desc: 'Take 50% reduced damage on the first turn of combat', cost: 28, icon: '[#]', category: 'Shadow' },
     { id: 'rel_horn_of_war', name: 'Horn of Valor', desc: 'Defeating an enemy restores 15 HP to squad', cost: 32, icon: '[>]', category: 'Relics' },
+
+    // Defensive Citadel Relics (Flat DEF, DEF%, and Damage Reduction %)
+    { id: 'rel_titan_plate', name: 'Titanium Plating', desc: '+8 Base DEF', cost: 28, icon: '[#]', category: 'Citadel' },
+    { id: 'rel_bulwark_core', name: 'Bulwark Core', desc: '+12 Base DEF', cost: 34, icon: '[#]', category: 'Citadel' },
+    { id: 'rel_bastion_shield', name: 'Bastion Aegis', desc: '+16 Base DEF', cost: 40, icon: '[#]', category: 'Citadel' },
+    { id: 'rel_nanite_weave', name: 'Nanite Weave', desc: '+25% DEF bonus', cost: 30, icon: '[%]', category: 'Citadel' },
+    { id: 'rel_harmonic_barrier', name: 'Harmonic Field', desc: '+40% DEF bonus', cost: 36, icon: '[%]', category: 'Citadel' },
+    { id: 'rel_overcharged_plating', name: 'Overcharged Plating', desc: '+60% DEF bonus', cost: 44, icon: '[%]', category: 'Citadel' },
+    { id: 'rel_goliath_carapace', name: 'Goliath Carapace', desc: '+10 Base DEF and +30% DEF bonus', cost: 42, icon: '[M]', category: 'Citadel' },
+    { id: 'rel_fortress_seal', name: 'Fortress Seal', desc: '+15 Base DEF and +45% DEF bonus', cost: 48, icon: '[M]', category: 'Citadel' },
+    { id: 'rel_apex_bulwark', name: 'Apex Bulwark', desc: '+20 Base DEF and +60% DEF bonus', cost: 55, icon: '[M]', category: 'Citadel' },
+    { id: 'rel_kinetic_absorber', name: 'Kinetic Absorber', desc: 'Reduces all damage taken by 15%', cost: 32, icon: '[-]', category: 'Citadel' },
+    { id: 'rel_stasis_field', name: 'Stasis Barrier', desc: 'Reduces all damage taken by 25%', cost: 42, icon: '[-]', category: 'Citadel' },
     { id: 'rel_spaghetti_plate', name: 'Family Feast', desc: 'Rest nodes grant +15 Max HP in addition to healing', cost: 26, icon: '(o)', category: 'Shadow' },
     { id: 'rel_originium_cube', name: 'Apex Catalyst', desc: '+50% ATK, +100 Max HP, +5 DEF, +100 Starting Gold', cost: 50, icon: '<*>', category: 'Tactical' },
   ],

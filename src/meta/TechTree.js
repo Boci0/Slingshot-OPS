@@ -80,7 +80,10 @@ export class TechTree {
     hpBonus += vitLvl * 15;
 
     const aegisLvl = this.getNodeLevel('def_aegis');
-    defBonus += aegisLvl * 1.0;
+    defBonus += aegisLvl * 1.5;
+
+    const matrixPctLvl = this.getNodeLevel('def_matrix_pct');
+    const defPctBonus = matrixPctLvl * 0.05;
 
     const thornsResistLvl = this.getNodeLevel('def_thorns_resist');
     const thornsResistPct = thornsResistLvl * 0.15;
@@ -93,6 +96,7 @@ export class TechTree {
       baseAtkBonus,
       hpBonus,
       defBonus,
+      defPctBonus,
       thornsResistPct,
       startGoldBonus,
 
