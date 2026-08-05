@@ -626,13 +626,16 @@ function onBattleEnd(won, node) {
       addFeedEntry(`<span class="feed-heal">+${heal} HP RECOVERED</span>`);
     }
 
-    // Elite, Boss, and Mini-Boss nodes reward Collectibles!
+    // Elite nodes reward 1 collectible; mini-boss rewards 2; boss gives none
     let rewardRelic = null;
-    if (node.type === 'elite' || node.type === 'boss') {
-      rewardRelic = rewardRandomCollectible((node.type === 'boss' ? 'BOSS' : 'ELITE') + ' DROP');
+    let rewardRelics = null;
+    if (node.type === 'elite') {
+      rewardRelic = rewardRandomCollectible('ELITE DROP');
     } else if (node.type === 'miniboss') {
-      rewardRelic = rewardRandomCollectible('MINI-BOSS DROP 1');
-      rewardRandomCollectible('MINI-BOSS DROP 2');
+      const r1 = rewardRandomCollectible('MINI-BOSS DROP 1');
+      const r2 = rewardRandomCollectible('MINI-BOSS DROP 2');
+      rewardRelics = [r1, r2].filter(Boolean);
+      rewardRelic = rewardRelics[0] || null;
     }
 
     // Chance for a boon drop on combat wins only
@@ -642,7 +645,7 @@ function onBattleEnd(won, node) {
     }
 
     ui.updateRunHud(run);
-    ui.showCombatResult(true, { gold, tech, heal, relic: rewardRelic }, run);
+    ui.showCombatResult(true, { gold, tech, heal, relic: rewardRelic, relics: rewardRelics }, run);
   } else {
     ui.updateRunHud(run);
     ui.showCombatResult(false, null, run);

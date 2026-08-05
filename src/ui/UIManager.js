@@ -428,7 +428,13 @@ export class UIManager {
       if (rewards.gold) parts.push(`+${rewards.gold} Gold`);
       if (rewards.tech) parts.push(`+${rewards.tech} TP`);
       if (rewards.heal) parts.push(`+${rewards.heal} HP`);
-      if (rewards.relic) parts.push(`<span style="color:var(--accent)">+ Collectible: ${rewards.relic.name}</span>`);
+      if (rewards.relics && rewards.relics.length) {
+        for (const r of rewards.relics) {
+          parts.push(`<span style="color:var(--accent)">+ Collectible: ${r.name}</span>`);
+        }
+      } else if (rewards.relic) {
+        parts.push(`<span style="color:var(--accent)">+ Collectible: ${rewards.relic.name}</span>`);
+      }
       if (parts.length) body += `<p class="reward-line">${parts.join(' • ')}</p>`;
     }
     this.openModal('BATTLE REPORT', body,
