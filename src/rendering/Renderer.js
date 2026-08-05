@@ -19,6 +19,18 @@ export class Renderer {
 
     this.shakeTime = 0;
     this.shakeIntensity = 0;
+
+    // Tooltip overlay for status tag hover
+    this._hoverZones = [];
+    this._tooltip = document.createElement('div');
+    this._tooltip.className = 'status-tooltip';
+    this._tooltip.style.display = 'none';
+    document.body.appendChild(this._tooltip);
+
+    this._onMouseMove = (e) => this._handleTooltipMove(e);
+    this._onMouseLeave = () => { this._tooltip.style.display = 'none'; };
+    canvas.addEventListener('mousemove', this._onMouseMove);
+    canvas.addEventListener('mouseleave', this._onMouseLeave);
   }
 
   addScreenShake(intensity = 10) {
@@ -236,11 +248,6 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, r + 6, 0, Math.PI * 2);
       ctx.stroke();
-
-      ctx.font = 'bold 11px Consolas, monospace';
-      ctx.fillStyle = '#ff7043';
-      ctx.textAlign = 'center';
-      ctx.fillText(`BURN (${ball.burnTicks}T)`, ball.x, ball.y + r + 14);
       ctx.restore();
     }
 
@@ -253,11 +260,18 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, r + 6, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
+    }
 
-      ctx.font = 'bold 11px Consolas, monospace';
-      ctx.fillStyle = '#4fc3f7';
-      ctx.textAlign = 'center';
-      ctx.fillText('FROZEN', ball.x, ball.y + r + 14);
+    if (ball.corrodeTicks > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#69f0ae';
+      ctx.shadowColor = '#00e676';
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, r + 6, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -349,13 +363,18 @@ export class Renderer {
     const barHeight = 20;
     const y = 42;
 
+    // Reset hover zones each frame
+    this._hoverZones = [];
+
     if (player) {
       this._drawHpBar(ctx, player, 35, y, barWidth, barHeight, C.hpBarFg);
+      this._drawStatusTags(ctx, player, 35, y + barHeight + 4, barWidth, false);
     }
 
     enemies.forEach((enemy, i) => {
       const ey = y + i * 52;
       this._drawHpBar(ctx, enemy, W.width - 35 - barWidth, ey, barWidth, barHeight, C.hpBarEnemyFg);
+      this._drawStatusTags(ctx, enemy, W.width - 35 - barWidth, ey + barHeight + 4, barWidth, true);
 
       ctx.textAlign = 'right';
       ctx.font = '700 14px "Segoe UI", sans-serif';
@@ -374,6 +393,86 @@ export class Renderer {
       ctx.font = '700 15px "Segoe UI", sans-serif';
       ctx.fillText('YOU', 35, y - 8);
     }
+  }
+
+  _drawStatusTags(ctx, ball, barX, tagY, barWidth, alignRight) {
+    const tags = [];
+    if (ball.burnTicks > 0)
+      tags.push({ label: `BURN ${ball.burnTicks}T`, color: '#ff5722', desc: `Burning! Takes ${ball.burnDmg || 8} damage at the start of each turn. ${ball.burnTicks} turn(s) remaining.` });
+    if (ball.isFrozen)
+      tags.push({ label: 'FROZEN', color: '#4fc3f7', desc: 'Frozen! Next launch speed reduced by 35%.' });
+    if (ball.corrodeTicks > 0)
+      tags.push({ label: `CORRODE ${ball.corrodeTicks}T`, color: '#69f0ae', desc: `Corroded! Loses ${ball.corrodeDefDrain || 1} DEF at the start of each turn. ${ball.corrodeTicks} turn(s) remaining.` });
+    if (ball.isRallied)
+      tags.push({ label: 'RALLIED', color: '#ffcc02', desc: 'Rallied by a Tactician: +20% ATK and +3 DEF.' });
+
+    if (tags.length === 0) return;
+
+    const tagH = 14;
+    const padX = 6;
+    const gap = 4;
+    ctx.font = 'bold 9px Consolas, monospace';
+
+    let cursorX = alignRight ? (barX + barWidth) : barX;
+
+    // Measure widths first
+    const widths = tags.map((t) => ctx.measureText(t.label).width + padX * 2);
+    const totalW = widths.reduce((a, w) => a + w + gap, 0) - gap;
+
+    if (alignRight) cursorX = barX + barWidth - totalW;
+
+    // canvas-to-DOM scale for hit-test zones
+    const scaleX = this.canvas.clientWidth / this.canvas.width;
+    const scaleY = this.canvas.clientHeight / this.canvas.height;
+    const rect = this.canvas.getBoundingClientRect();
+
+    tags.forEach((tag, idx) => {
+      const tw = widths[idx];
+      const tx = cursorX;
+
+      // Background pill
+      ctx.save();
+      ctx.fillStyle = tag.color + '33';
+      ctx.strokeStyle = tag.color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const rx = 3;
+      ctx.roundRect(tx, tagY, tw, tagH, rx);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = tag.color;
+      ctx.textAlign = 'left';
+      ctx.fillText(tag.label, tx + padX, tagY + tagH - 3);
+      ctx.restore();
+
+      // Register hover zone in screen-pixel space
+      this._hoverZones.push({
+        x: rect.left + tx * scaleX,
+        y: rect.top + tagY * scaleY,
+        w: tw * scaleX,
+        h: tagH * scaleY,
+        desc: tag.desc,
+        color: tag.color,
+      });
+
+      cursorX += tw + gap;
+    });
+  }
+
+  _handleTooltipMove(e) {
+    for (const zone of this._hoverZones) {
+      if (e.clientX >= zone.x && e.clientX <= zone.x + zone.w &&
+          e.clientY >= zone.y && e.clientY <= zone.y + zone.h) {
+        this._tooltip.textContent = zone.desc;
+        this._tooltip.style.display = 'block';
+        this._tooltip.style.left = (e.clientX + 12) + 'px';
+        this._tooltip.style.top = (e.clientY - 10) + 'px';
+        this._tooltip.style.borderColor = zone.color;
+        return;
+      }
+    }
+    this._tooltip.style.display = 'none';
   }
 
   _drawHpBar(ctx, ball, x, y, w, h, fillColor) {

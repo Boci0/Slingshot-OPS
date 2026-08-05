@@ -1133,3 +1133,21 @@ body {
   font-weight: 700;
   margin-bottom: 24px;
 }
+
+/* Status effect hover tooltip (anchored via JS to cursor position) */
+.status-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 260px;
+  padding: 6px 10px;
+  background: rgba(8, 12, 20, 0.92);
+  border: 1px solid #69f0ae;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #e0e6f0;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  white-space: normal;
+}

@@ -295,6 +295,20 @@ export class Game {
       }
     }
 
+    // Tick player corrosion (from corroder impact)
+    if (this.player && this.player.corrodeTicks > 0) {
+      const drain = this.player.corrodeDefDrain || 1;
+      const curDef = this.collisionSystem.stats.playerTotalDef || 0;
+      const newDef = Math.max(0, curDef - drain);
+      this.collisionSystem.stats.playerTotalDef = newDef;
+      this.player.corrodeTicks -= 1;
+      this.events.emit('enemy-ability', {
+        enemy: null,
+        ability: 'Corrosion Tick',
+        desc: `Corrosion drains ${drain} DEF! (Now ${newDef} DEF, ${this.player.corrodeTicks} turns left)`,
+      });
+    }
+
     this.events.emit('player-turn-start');
   }
 
@@ -641,6 +655,14 @@ export class Game {
             enemy: attacker,
             ability: 'Thermal Flare Ignition',
             desc: 'Blaze Mortar ignited player with 2 turns of Thermal Burn (8 DMG/turn)!',
+          });
+        } else if (attacker.archetype === 'corroder') {
+          victim.corrodeTicks = 3;
+          victim.corrodeDefDrain = 1;
+          this.events.emit('enemy-ability', {
+            enemy: attacker,
+            ability: 'Corrosive Impact',
+            desc: 'Acid Drone hit you! Corrosion applied: -1 DEF/turn for 3 turns.',
           });
         }
       }
