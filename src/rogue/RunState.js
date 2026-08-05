@@ -61,11 +61,18 @@ export class RunState {
   }
 
   get atk() {
-    return (this.baseAtk * this.atkMult) / 10;
+    let mult = this.atkMult;
+    if (this.permanent?.hasRelicSynergy) {
+      mult += this.relics.length * 0.015;
+    }
+    return (this.baseAtk * mult) / 10;
   }
 
   get totalDef() {
     let base = this.def; // base def from tech tree & boons
+    if (this.permanent?.hasRelicSynergy) {
+      base += this.relics.length * 0.5;
+    }
 
     // Base DEF Relics
     if (this.relics.includes('rel_heavy_armor')) base += 8;
@@ -213,8 +220,12 @@ export class RunState {
           this.maxHp += 15;
           this.hp += 15;
           break;
-        default:
-          break;
+      }
+
+      if (this.permanent?.hasRelicSynergy) {
+        const hpGain = Math.round(RUN.maxHpBase * 0.015);
+        this.maxHp += hpGain;
+        this.hp += hpGain;
       }
     }
   }

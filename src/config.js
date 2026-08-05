@@ -333,6 +333,7 @@ export const CONFIG = {
     vit_overflow_shield: { id: 'vit_overflow_shield', label: 'Overflow Shielding', desc: 'Excess healing converts to Shield HP (up to 100% Max HP)', maxLevel: 1, costs: [24], branch: 'vit', icon: '[SHD]', requires: 'vit_health' },
     vit_emergency_medkit: { id: 'vit_emergency_medkit', label: 'Emergency Medkit', desc: 'Restore 25 HP immediately when dropping below 25% HP', maxLevel: 1, costs: [22], branch: 'vit', icon: '[MED]', requires: 'vit_overflow_shield' },
     vit_titan_core: { id: 'vit_titan_core', label: 'Titan Core', desc: 'Safe Zone nodes restore +50% more HP and gain +10 Max HP', maxLevel: 1, costs: [26], branch: 'vit', icon: '[CORE]', requires: 'vit_emergency_medkit' },
+    vit_vampiric_vitality: { id: 'vit_vampiric_vitality', label: 'Vampiric Vitality', desc: 'Absorbs 25% of all damage dealt as healing (affected by Risk healing penalty)', maxLevel: 1, costs: [28], branch: 'vit', icon: '[VAMP]', requires: 'vit_titan_core' },
 
     // DEFENSE branch
     def_aegis: { id: 'def_aegis', label: 'Aegis', desc: 'Increases Base DEF (+1.5 Base DEF per rank)', maxLevel: 10, costs: [6, 10, 14, 18, 22, 28, 34, 40, 48, 56], branch: 'def', icon: '[DEF]', requires: null },
@@ -347,6 +348,7 @@ export const CONFIG = {
     tac_merchant: { id: 'tac_merchant', label: 'Merchant Network', desc: 'Collectibles in shop cost 15% less and Rerolls cost 50% less', maxLevel: 1, costs: [20], branch: 'tac', icon: '[SHOP]', requires: 'tac_war_chest' },
     tac_logistics: { id: 'tac_logistics', label: 'Field Logistics', desc: 'Squad ability cooldowns reduced by 1 turn', maxLevel: 1, costs: [24], branch: 'tac', icon: '[LOG]', requires: 'tac_merchant' },
     tac_intellect: { id: 'tac_intellect', label: 'Tactical Intellect', desc: 'Earn +25% extra Tech Points from all sources and quests', maxLevel: 1, costs: [22], branch: 'tac', icon: '[TP]', requires: 'tac_logistics' },
+    tac_relic_synergy: { id: 'tac_relic_synergy', label: 'Relic Synergy', desc: 'Grants +1.5% ATK, +1.5% Max HP, and +0.5 DEF for every Collectible owned in your run', maxLevel: 1, costs: [26], branch: 'tac', icon: '[SYN]', requires: 'tac_intellect' },
   },
 
   // --- Roguelike boons (collected as map rewards) ---

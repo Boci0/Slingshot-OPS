@@ -547,6 +547,7 @@ function startCombat(node) {
     addFeedEntry(`<span class="feed-enemy-ability">HOSTILE ABILITY: ${ability} — ${desc}</span>`);
   });
 
+  game.run = run;
   game.startBattle(battleConfig);
 }
 

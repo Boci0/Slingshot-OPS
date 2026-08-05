@@ -213,6 +213,8 @@ export class UIManager {
     ];
     if (stats.startGoldBonus) parts.push(`+${stats.startGoldBonus} Start Gold`);
     if (stats.shopDiscountBonus) parts.push(`-${Math.round(stats.shopDiscountBonus * 100)}% Shop Cost`);
+    if (stats.hasVampiricVitality) parts.push('25% Lifesteal');
+    if (stats.hasRelicSynergy) parts.push('Relic Synergy');
 
     document.getElementById('tech-apply').textContent = `Applied: ${parts.join(' - ')}`;
   }

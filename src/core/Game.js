@@ -15,6 +15,7 @@ import { SlingshotInput } from '../input/SlingshotInput.js';
 import { EnemyAI } from '../ai/EnemyAI.js';
 import { Renderer } from '../rendering/Renderer.js';
 import { soundEngine } from '../utils/SoundEngine.js';
+import { saveSystem } from '../meta/SaveSystem.js';
 
 const W = CONFIG.world;
 const B = CONFIG.ball;
@@ -635,6 +636,27 @@ export class Game {
 
       if (attacker.team === 'player') {
         this.events.emit('player-dealt-damage', { victim, damage });
+
+        if (this.techStats?.hasVampiricVitality && damage > 0) {
+          const rawHeal = Math.max(1, Math.round(damage * 0.25));
+          let effectiveHeal = 0;
+          if (this.run) {
+            effectiveHeal = this.run.healFlat(rawHeal, this.techStats);
+            this.player.hp = Math.min(this.player.maxHp, this.run.hp);
+          } else {
+            const healMult = saveSystem.getHealingMultiplier();
+            effectiveHeal = Math.max(1, Math.round(rawHeal * healMult));
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + effectiveHeal);
+          }
+          if (effectiveHeal > 0) {
+            this._spawnHitParticles(this.player.x, this.player.y);
+            this.events.emit('enemy-ability', {
+              enemy: null,
+              ability: 'Vampiric Vitality',
+              desc: `Vampiric Vitality absorbed +${effectiveHeal} HP from damage dealt!`,
+            });
+          }
+        }
       } else {
         this.battleStats.playerDamageTaken += damage;
         this.events.emit('enemy-dealt-damage', { attacker, damage });

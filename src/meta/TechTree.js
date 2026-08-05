@@ -108,6 +108,7 @@ export class TechTree {
       hasOverflowShield: this.isPurchased('vit_overflow_shield'),
       hasEmergencyMedkit: this.isPurchased('vit_emergency_medkit'),
       hasTitanCore: this.isPurchased('vit_titan_core'),
+      hasVampiricVitality: this.isPurchased('vit_vampiric_vitality'),
 
       hasForcefield: this.isPurchased('def_forcefield'),
       hasFortifiedMatrix: this.isPurchased('def_fortified_matrix'),
@@ -116,6 +117,7 @@ export class TechTree {
       hasMerchant: this.isPurchased('tac_merchant'),
       hasLogistics: this.isPurchased('tac_logistics'),
       hasIntellect: this.isPurchased('tac_intellect'),
+      hasRelicSynergy: this.isPurchased('tac_relic_synergy'),
     };
   }
 
