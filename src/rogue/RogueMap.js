@@ -95,15 +95,9 @@ export class RogueMap {
 
         let nodeType;
         const isEntry = r === centerRow && c === centerCol;
-        const isBossCell = isLast && distFromCenter === (rows - 1) && (r === rows - 1 || c === cols - 1);
-        const isMiniBossCell = !isLast && floorIndex === 2 && r === rows - 1 && c === cols - 1;
 
         if (isEntry) {
           nodeType = NODE_TYPES.ENTRY;
-        } else if (isBossCell) {
-          nodeType = NODE_TYPES.BOSS;
-        } else if (isMiniBossCell) {
-          nodeType = 'miniboss';
         } else {
           nodeType = this._pickType(rng, weights, floorIndex, isLast);
         }

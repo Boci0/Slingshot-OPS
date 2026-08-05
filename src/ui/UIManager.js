@@ -590,9 +590,9 @@ export class UIManager {
     let maxHpVal = 0;
     const notes = [];
 
-    if (run.permanent?.hasTitanCore) {
-      healVal = Math.round(healVal * 1.5);
-      maxHpVal += 10;
+    if (run.permanent?.titanCoreHealBonusPct > 0) {
+      healVal = Math.round(healVal * (1 + run.permanent.titanCoreHealBonusPct));
+      maxHpVal += (run.permanent.titanCoreMaxHpBonus || 0);
       notes.push('Titan Core');
     }
 

@@ -407,14 +407,48 @@ function returnToMap() {
 function advanceFloorIfNeeded() {
   const node = run.currentNode;
 
-  // Boss node cleared on final floor ends the run with victory
-  if (node && node.type === 'boss' && run.floor === CONFIG.map.floors - 1) {
-    endRun(true);
-    return true;
-  }
+  if (run.floorActions <= 0) {
+    // Floor 3 (index 2): Depleting action points forces Mini-Boss battle!
+    if (run.floor === 2 && !run.floor3MinibossCleared) {
+      if (node && node.type === 'miniboss') {
+        run.floor3MinibossCleared = true;
+      } else {
+        const minibossNode = {
+          id: 'floor3-miniboss',
+          floor: 2,
+          type: 'miniboss',
+          displayName: 'FLOOR 3 COMMANDER',
+        };
+        run.currentNode = minibossNode;
+        run.currentNodeId = minibossNode.id;
+        addFeedEntry(`<span class="feed-enemy-ability">ACTION POINTS DEPLETED — ENGAGING FLOOR 3 MINI-BOSS!</span>`);
+        startCombat(minibossNode);
+        return true;
+      }
+    }
 
-  // Advance floor if floor actions are depleted or boss is defeated
-  if (run.floorActions <= 0 || (node && node.type === 'boss')) {
+    // Floor 5 (index 4): Depleting action points forces Final Boss battle!
+    if (run.floor === 4 && !run.floor5BossCleared) {
+      if (node && node.type === 'boss') {
+        run.floor5BossCleared = true;
+        endRun(true);
+        return true;
+      } else {
+        const bossNode = {
+          id: 'floor5-boss',
+          floor: 4,
+          type: 'boss',
+          displayName: 'SECTOR COMMANDER',
+        };
+        run.currentNode = bossNode;
+        run.currentNodeId = bossNode.id;
+        addFeedEntry(`<span class="feed-enemy-ability">ACTION POINTS DEPLETED — ENGAGING FINAL SECTOR COMMANDER!</span>`);
+        startCombat(bossNode);
+        return true;
+      }
+    }
+
+    // Advance floor after miniboss or for standard floors
     if (run.floor < CONFIG.map.floors - 1) {
       run.floor += 1;
       run.resetFloorActions();
@@ -818,10 +852,10 @@ function resolveRest(choice) {
     let healAmount = CONFIG.run.hpRegenPerRest || 30;
     let maxHpBonus = 0;
 
-    // Tech tree node: Titan Core (+50% heal and +10 Max HP)
-    if (run.permanent?.hasTitanCore) {
-      healAmount = Math.round(healAmount * 1.5);
-      maxHpBonus += 10;
+    // Tech tree node: Titan Core
+    if (run.permanent?.titanCoreHealBonusPct > 0) {
+      healAmount = Math.round(healAmount * (1 + run.permanent.titanCoreHealBonusPct));
+      maxHpBonus += (run.permanent.titanCoreMaxHpBonus || 0);
     }
 
     // Relic collectible: Family Feast (+15 Max HP)
