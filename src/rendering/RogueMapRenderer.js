@@ -190,6 +190,9 @@ export class RogueMapRenderer {
   }
 
   _drawNode(ctx, node, currentNodeId, canSelect) {
+    if (node.type === 'miniboss' || node.type === 'boss') {
+      node.type = 'elite';
+    }
     const style = NODE_STYLE[node.type] || NODE_STYLE.combat;
     const isCurrent = node.id === currentNodeId;
     const selectable = canSelect.has(node.id);

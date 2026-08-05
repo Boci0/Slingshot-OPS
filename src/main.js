@@ -91,6 +91,7 @@ const ui = new UIManager({
   getTechPoints: () => saveSystem.data.techPoints,
   onRenderMap: (mapCanvas, floorIndex) => {
     if (!mapRenderer) mapRenderer = new RogueMapRenderer(mapCanvas);
+    map?.sanitizeGridNodes?.();
     const floor = map.floors[floorIndex];
     const nextOptions = map.getNextOptions(run.floor, run.currentNodeId);
     const canSelect = new Set(nextOptions.map((n) => n.id));

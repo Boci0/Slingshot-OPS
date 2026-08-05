@@ -52,12 +52,26 @@ export class RogueMap {
   constructor(runSeed = 1) {
     this.runSeed = runSeed;
     this.floors = this._generateFloors();
+    this.sanitizeGridNodes();
   }
 
   /** Regenerate with a new seed (new run). */
   regenerate(runSeed) {
     this.runSeed = runSeed;
     this.floors = this._generateFloors();
+    this.sanitizeGridNodes();
+  }
+
+  sanitizeGridNodes() {
+    if (!this.floors) return;
+    for (const floor of this.floors) {
+      if (!floor || !floor.nodes) continue;
+      for (const node of floor.nodes) {
+        if (node.type === 'miniboss' || node.type === 'boss') {
+          node.type = 'elite';
+        }
+      }
+    }
   }
 
   _generateFloors() {
