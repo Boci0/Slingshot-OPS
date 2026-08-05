@@ -70,6 +70,7 @@ export class Game {
       wallBounced: false,
       echoUsed: false,
       clusteredThisTurn: false,
+      overdriveStacks: 0,
     };
   }
 
@@ -201,9 +202,13 @@ export class Game {
     if (id === 'overdrive') {
       ab.ready = false;
       ab.cooldownLeft = ab.baseCooldown;
+      this.battleStats.overdriveStacks = (this.battleStats.overdriveStacks || 0) + 1;
       this.battleStats.overdriveActive = true;
       soundEngine.playAbility('overdrive');
-      this.events.emit('ability-used', { id, name: CONFIG.abilities.overdrive.name });
+      this.events.emit('ability-used', {
+        id,
+        name: `OVERDRIVE (STACK ${this.battleStats.overdriveStacks}x)`,
+      });
       return true;
     }
 

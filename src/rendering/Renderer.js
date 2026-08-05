@@ -209,6 +209,24 @@ export class Renderer {
     ctx.stroke();
 
     // Ability Aura Effects
+    const odStacks = ball.team === 'player' ? (this.worldRef?.battleStats?.overdriveStacks || 0) : 0;
+    if (odStacks > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#e8a94c';
+      ctx.shadowColor = '#e8a94c';
+      ctx.shadowBlur = 12 + odStacks * 4;
+      ctx.lineWidth = 3 + Math.min(6, odStacks);
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, r + 7, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = 'bold 12px Consolas, monospace';
+      ctx.fillStyle = '#e8a94c';
+      ctx.textAlign = 'center';
+      ctx.fillText(`OVERDRIVE x${odStacks}`, ball.x, ball.y - r - 16);
+      ctx.restore();
+    }
+
     if (ball.isOvercharged) {
       ctx.strokeStyle = '#ff8a65';
       ctx.lineWidth = 3;

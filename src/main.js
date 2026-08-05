@@ -221,7 +221,12 @@ function updateAbilityHud() {
     btnOverdrive.classList.toggle('ready', od.ready);
   }
   if (cdOverdrive) {
-    cdOverdrive.textContent = od.ready ? 'READY' : `${od.cooldownLeft}T`;
+    const stacks = game.battleStats?.overdriveStacks || 0;
+    if (stacks > 0) {
+      cdOverdrive.textContent = `${stacks}x STACK`;
+    } else {
+      cdOverdrive.textContent = od.ready ? 'READY' : `${od.cooldownLeft}T`;
+    }
   }
   if (btnBarrier) {
     btnBarrier.disabled = !br.ready;

@@ -69,10 +69,17 @@ export class CollisionSystem {
         baseDamage *= 1.15;
       }
 
-      if (bs && bs.overdriveActive) {
-        const mult = rels.includes('rel_energy_well') ? 2.0 : CONFIG.abilities.overdrive.damageMult;
-        baseDamage *= mult;
-        bs.overdriveActive = false;
+      const stacks = (bs && bs.overdriveStacks) ? bs.overdriveStacks : (bs && bs.overdriveActive ? 1 : 0);
+      if (stacks > 0) {
+        const baseMult = rels.includes('rel_energy_well') ? 2.0 : CONFIG.abilities.overdrive.damageMult;
+        const totalMult = baseMult + (stacks - 1) * 0.5;
+        baseDamage *= totalMult;
+        if (bs.overdriveStacks && bs.overdriveStacks > 0) {
+          bs.overdriveStacks -= 1;
+        }
+        if (!bs.overdriveStacks || bs.overdriveStacks <= 0) {
+          bs.overdriveActive = false;
+        }
       }
 
       if (rels.includes('rel_knight_lance') && bs && !bs.lanceUsed) {
