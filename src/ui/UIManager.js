@@ -245,15 +245,20 @@ export class UIManager {
     // Boon chips
     const container = document.getElementById('run-boons');
     container.innerHTML = '';
+    const counts = {};
     for (const id of run.boons) {
+      counts[id] = (counts[id] || 0) + 1;
+    }
+    for (const id of Object.keys(counts)) {
       const def = CONFIG.boons.find((b) => b.id === id);
       if (!def) continue;
+      const count = counts[id];
       const chip = document.createElement('span');
       chip.className = 'boon-chip';
       chip.style.borderColor = def.color;
       chip.style.color = def.color;
-      chip.textContent = def.name;
-      chip.title = def.desc;
+      chip.textContent = count > 1 ? `${def.name} x${count}` : def.name;
+      chip.title = `${def.desc} (Stack ${count})`;
       container.appendChild(chip);
     }
     if (run.boons.length === 0) {

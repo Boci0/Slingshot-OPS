@@ -446,7 +446,11 @@ function startCombat(node) {
   // Ensure player HP carries over safely (at least 1 HP)
   if (run.hp <= 0) run.hp = 1;
 
-  const thinkDelay = CONFIG.ai.thinkDelay - (run.hasBoon('boon_swift') ? 0.2 : 0);
+  const swiftCount = run.getBoonCount('boon_swift');
+  const thinkDelay = CONFIG.ai.thinkDelay - swiftCount * 0.2;
+
+  const powerCount = run.getBoonCount('boon_power');
+  const maxPowerMult = 1 + powerCount * 0.15;
   const riskLevel = saveSystem.getDifficultyLevel();
   const riskData = saveSystem.getRiskData();
 
@@ -501,6 +505,7 @@ function startCombat(node) {
     techStats: techTree.getPermanentStats(),
     riskLevel: riskLevel,
     floor: run.floor + 1,
+    maxPowerMult,
   };
 
   // Wire quest hooks (clear old listeners first so no stacking)

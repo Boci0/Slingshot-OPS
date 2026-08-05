@@ -68,10 +68,15 @@ export class RunState {
     return `${this.floor + 1}/${CONFIG.map.floors}`;
   }
 
-  /** Apply a boon by id at run time. */
+  /** Get count of a specific boon owned. */
+  getBoonCount(boonId) {
+    return this.boons.filter((id) => id === boonId).length;
+  }
+
+  /** Apply a boon by id at run time (supports stacking). */
   applyBoon(boonId) {
     const def = CONFIG.boons.find((b) => b.id === boonId);
-    if (!def || this.boons.includes(boonId)) return false;
+    if (!def) return false;
     this.boons.push(boonId);
 
     switch (boonId) {
@@ -90,13 +95,13 @@ export class RunState {
         if (this.hp > this.maxHp) this.hp = this.maxHp;
         break;
       case 'boon_swift':
-        // handled by battle config (enemy think delay)
+        // handled per stack in combat
         break;
       case 'boon_power':
-        // handled by battle config (max power boost)
+        // handled per stack in combat launch power
         break;
       case 'boon_regen':
-        // handled by battle end (heal 10)
+        // handled per stack in combat victory
         break;
       default:
         break;
@@ -171,7 +176,8 @@ export class RunState {
 
   /** Give gold, respecting Greed bonus and Risk Level Gold penalty. */
   gainGold(amount) {
-    const greedMult = this.hasBoon('boon_greed') ? 1.25 : 1;
+    const greedCount = this.getBoonCount('boon_greed');
+    const greedMult = 1 + greedCount * 0.25;
     const riskMult = saveSystem.getGoldMultiplier();
     const gained = Math.round(amount * greedMult * riskMult);
     this.gold += gained;
@@ -235,8 +241,9 @@ export class RunState {
 
   onCombatWon(regenBonus = 0) {
     this.combatsWon += 1;
-    if (this.hasBoon('boon_regen')) {
-      this.healFlat(10);
+    const regenCount = this.getBoonCount('boon_regen');
+    if (regenCount > 0) {
+      this.healFlat(10 * regenCount);
     }
     if (regenBonus) this.healFlat(regenBonus);
   }
