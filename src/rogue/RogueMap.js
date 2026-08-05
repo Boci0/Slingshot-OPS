@@ -166,11 +166,16 @@ export class RogueMap {
 
   _pickType(rng, weights, floorIndex, isLast) {
     let total = 0;
-    for (const k in weights) total += weights[k];
+    for (const k in weights) {
+      if (k === 'miniboss' || k === 'boss') continue;
+      total += weights[k];
+    }
+    if (total <= 0) return NODE_TYPES.COMBAT;
     let roll = rng() * total;
 
     const keys = Object.keys(weights);
     for (const k of keys) {
+      if (k === 'miniboss' || k === 'boss') continue;
       roll -= weights[k];
       if (roll <= 0) return k;
     }

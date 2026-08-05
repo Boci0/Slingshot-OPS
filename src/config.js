@@ -276,7 +276,7 @@ export const CONFIG = {
     floorWeights: {
       1: { combat: 6, encounter: 3, shop: 1, rest: 1, minigame: 1, elite: 1 },
       2: { combat: 4, encounter: 3, shop: 2, rest: 2, minigame: 2, elite: 2 },
-      3: { combat: 3, encounter: 2, shop: 2, rest: 2, minigame: 2, elite: 2, miniboss: 1 },
+      3: { combat: 4, encounter: 2, shop: 2, rest: 2, minigame: 2, elite: 2 },
       4: { combat: 3, encounter: 2, shop: 2, rest: 1, minigame: 2, elite: 3 },
       5: { combat: 3, encounter: 2, shop: 2, rest: 2, minigame: 2, elite: 3 },
     },
