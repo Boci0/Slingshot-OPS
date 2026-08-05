@@ -138,27 +138,13 @@ export class CollisionSystem {
       }
     }
 
-    // DEF Subtraction Logic (Enemy favored)
-    let damageAfterDef;
+    // DEF Subtraction & Damage Reduction Logic
+    let finalDamage;
     if (victim.team === 'player' && attacker.team === 'enemy') {
-      // Enemy attacks player:
-      // Enemies penetrate 25% of player DEF, and DEF can reduce baseDamage by at most 70% (30% minimum damage floor)
-      const effectiveDef = victimDef * 0.75;
-      const maxDefReduction = baseDamage * 0.70;
-      const actualDefReduction = Math.min(maxDefReduction, effectiveDef);
-      damageAfterDef = Math.max(baseDamage * 0.30, baseDamage - actualDefReduction);
+      finalDamage = this.calculatePlayerDamage(baseDamage, { bypassDef: false });
     } else {
-      damageAfterDef = Math.max(1, baseDamage - victimDef);
-    }
-
-    if (victim.team === 'player' && this.stats.techStats?.hasKineticDampener) {
-      victimDmgReductionPct += 0.25;
-    }
-
-    let finalDamage = Math.max(1, Math.round(damageAfterDef * (1 - victimDmgReductionPct)));
-
-    if (victim.team === 'player' && this.stats.riskPlusDmgTaken > 0) {
-      finalDamage = Math.max(1, Math.round(finalDamage * (1 + this.stats.riskPlusDmgTaken / 100)));
+      let damageAfterDef = Math.max(1, baseDamage - victimDef);
+      finalDamage = Math.max(1, Math.round(damageAfterDef * (1 - victimDmgReductionPct)));
     }
 
     if (attacker.team === 'player' && this.stats.relics?.includes('rel_syndicate_blade') && victim.archetype !== 'boss' && victim.displayName !== 'SECTOR COMMANDER') {
@@ -194,6 +180,34 @@ export class CollisionSystem {
     }
 
     this.applyDamage(attacker, victim, finalDamage);
+  }
+
+  calculatePlayerDamage(rawDamage, { bypassDef = false } = {}) {
+    let damage = rawDamage;
+
+    // 1. Flat DEF reduction (unless bypassing DEF, e.g. status DOTs)
+    if (!bypassDef) {
+      const def = this.stats.playerTotalDef || this.stats.playerDef || 0;
+      const effectiveDef = def * 0.75; // Enemies pierce 25% DEF
+      const maxDefReduction = damage * 0.70; // 30% min damage floor
+      const actualDefReduction = Math.min(maxDefReduction, effectiveDef);
+      damage = Math.max(damage * 0.30, damage - actualDefReduction);
+    }
+
+    // 2. Percentage Damage Reduction (Relics + Tech Tree Kinetic Dampener)
+    let redPct = this.stats.playerDamageReductionPct || 0;
+    if (this.stats.techStats?.hasKineticDampener) {
+      redPct += 0.25;
+    }
+    redPct = Math.max(0, Math.min(0.85, redPct));
+    damage = Math.max(1, Math.round(damage * (1 - redPct)));
+
+    // 3. Risk Modifier (+X% DMG TAKEN)
+    if (this.stats.riskPlusDmgTaken > 0) {
+      damage = Math.max(1, Math.round(damage * (1 + this.stats.riskPlusDmgTaken / 100)));
+    }
+
+    return Math.max(1, damage);
   }
 
   applyDamage(attacker, victim, damage) {

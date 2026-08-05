@@ -279,7 +279,8 @@ export class Game {
 
     // Tick player burn (from pyromancer ignition)
     if (this.player && this.player.burnTicks > 0) {
-      const burnDmg = this.player.burnDmg || 8;
+      const rawBurnDmg = this.player.burnDmg || 8;
+      const burnDmg = this.collisionSystem.calculatePlayerDamage(rawBurnDmg, { bypassDef: true });
       this.player.hp = Math.max(0, this.player.hp - burnDmg);
       this.player.burnTicks -= 1;
       this._spawnHitParticles(this.player.x, this.player.y);
@@ -405,8 +406,9 @@ export class Game {
         this.renderer.addScreenShake(12);
         soundEngine.playAbility('overdrive');
 
-        // Pull deals impact damage to the player
-        const pullDamage = 10;
+        // Pull deals impact damage to the player (affected by DEF, % reduction, and Risk modifiers)
+        const rawPullDamage = 12;
+        const pullDamage = this.collisionSystem.calculatePlayerDamage(rawPullDamage, { bypassDef: false });
         this.player.hp = Math.max(0, this.player.hp - pullDamage);
         this._spawnHitParticles(this.player.x, this.player.y);
         this.battleStats.playerDamageTaken += pullDamage;
