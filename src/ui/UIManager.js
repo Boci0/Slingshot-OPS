@@ -237,9 +237,13 @@ export class UIManager {
     const actEl = document.getElementById('run-actions');
     if (actEl) actEl.textContent = `${run.floorActions ?? 5}`;
     document.getElementById('run-gold').textContent = `${run.gold}G`;
-    const bonusPct = Math.round((run.atkBonusPct || 0) * 100);
-    document.getElementById('run-atk').textContent = `${run.baseAtk || 10} (+${bonusPct}%)`;
-    document.getElementById('run-def').textContent = `${run.def}`;
+    const atkBonusPct = Math.round((run.atkBonusPct || 0) * 100);
+    const totalAtk = (run.atk * 10).toFixed(1).replace('.0', '');
+    document.getElementById('run-atk').textContent = atkBonusPct > 0 ? `${totalAtk} (+${atkBonusPct}%)` : `${totalAtk}`;
+
+    const defPct = Math.round((run.defPctBonus || 0) * 100);
+    const totalDef = run.totalDef;
+    document.getElementById('run-def').textContent = defPct > 0 ? `${totalDef} (+${defPct}%)` : `${totalDef}`;
     document.getElementById('run-floor').textContent = run.floorProgress;
 
     // Boon chips

@@ -157,24 +157,6 @@ export class RogueMapRenderer {
     // Solid dark tactical navy fill
     ctx.fillStyle = '#0e131f';
     ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
-
-    // Uniform atmospheric grid lines extending seamlessly across all zoom levels
-    ctx.strokeStyle = 'rgba(122, 162, 255, 0.08)';
-    ctx.lineWidth = 1;
-
-    const step = 50;
-    for (let x = minX; x <= maxX; x += step) {
-      ctx.beginPath();
-      ctx.moveTo(x, minY);
-      ctx.lineTo(x, maxY);
-      ctx.stroke();
-    }
-    for (let y = minY; y <= maxY; y += step) {
-      ctx.beginPath();
-      ctx.moveTo(minX, y);
-      ctx.lineTo(maxX, y);
-      ctx.stroke();
-    }
   }
 
   _drawEdges(ctx, floor, canSelect, currentNodeId) {

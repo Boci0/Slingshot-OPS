@@ -93,6 +93,17 @@ export class RunState {
     return Math.round(base * (1 + pct));
   }
 
+  get defPctBonus() {
+    let pct = this.permanent?.defPctBonus || 0;
+    if (this.relics.includes('rel_nanite_weave')) pct += 0.25;
+    if (this.relics.includes('rel_harmonic_barrier')) pct += 0.40;
+    if (this.relics.includes('rel_overcharged_plating')) pct += 0.60;
+    if (this.relics.includes('rel_goliath_carapace')) pct += 0.30;
+    if (this.relics.includes('rel_fortress_seal')) pct += 0.45;
+    if (this.relics.includes('rel_apex_bulwark')) pct += 0.60;
+    return pct;
+  }
+
   get damageReductionPct() {
     let pct = 0;
     if (this.relics.includes('rel_kinetic_absorber')) pct += 0.15;
