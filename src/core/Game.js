@@ -366,6 +366,23 @@ export class Game {
     });
   }
 
+  _triggerChainLightning(originEnemy) {
+    soundEngine.playAbility('overdrive');
+    this.renderer.addScreenShake(10);
+
+    for (const enemy of this.enemies) {
+      if (enemy !== originEnemy && enemy.hp > 0) {
+        enemy.hp = Math.max(0, enemy.hp - 25);
+        this._spawnHitParticles(enemy.x, enemy.y);
+        this.events.emit('player-dealt-damage', { victim: enemy, damage: 25 });
+        if (enemy.hp <= 0) {
+          this._spawnDefeatParticles(enemy.x, enemy.y, enemy.color);
+          this._checkBattleEnd(enemy);
+        }
+      }
+    }
+  }
+
   _bindEvents() {
     this.events.on('place-barrier', ({ x, y }) => {
       if (!this.running) return;
@@ -459,6 +476,10 @@ export class Game {
         soundEngine.playDefeat();
         this._spawnDefeatParticles(victim.x, victim.y, victim.color);
         this.renderer.addScreenShake(12);
+
+        if (victim.team === 'enemy' && this.relics.includes('rel_chain_lightning')) {
+          this._triggerChainLightning(victim);
+        }
       }
 
       if (attacker.team === 'player') {

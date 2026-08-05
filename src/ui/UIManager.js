@@ -639,21 +639,37 @@ export class UIManager {
   }
 
   showMinigameResult(result, rewards = {}) {
-    const title = result.perfect ? 'PERFECT DRILL' : result.success ? 'DRILL PASSED' : 'DRILL FAILED';
-    const color = result.success ? '#5fd3a8' : '#e0655c';
+    const hits = result.hits || 0;
+    const perfects = result.perfects || 0;
+    const totalAttempts = result.totalAttempts || 5;
+    const isAllPerfect = hits === totalAttempts && perfects === totalAttempts;
+
+    const title = isAllPerfect
+      ? 'FLAWLESS DRILL'
+      : perfects >= 3
+      ? 'PRECISION DRILL'
+      : hits >= 3
+      ? 'DRILL PASSED'
+      : 'DRILL FAILED';
+
+    const color = (isAllPerfect || perfects >= 3 || hits >= 3) ? '#5fd3a8' : '#e0655c';
 
     let body = `<p style="color:${color};font-weight:700;font-size:16px;margin-bottom:6px;">${title}</p>`;
-    body += `<p style="margin-bottom:12px;">Accuracy: <strong>${result.hits}/5 Hits</strong> • <strong>${result.perfects} Perfects</strong></p>`;
+    body += `<p style="margin-bottom:12px;">Accuracy: <strong>${hits}/${totalAttempts} Hits</strong> • <strong>${perfects} Perfects</strong></p>`;
 
     if (rewards) {
       const parts = [];
       if (rewards.gold) parts.push(`+${rewards.gold} Gold`);
-      if (rewards.tech) parts.push(`+${rewards.tech} TP`);
-      if (rewards.relic) parts.push(`<span style="color:var(--accent)">+ Collectible: ${rewards.relic.name}</span>`);
+      if (rewards.heal) parts.push(`<span style="color:#5fd3a8">+${rewards.heal} HP Healed</span>`);
+      if (rewards.relics && rewards.relics.length) {
+        for (const r of rewards.relics) {
+          parts.push(`<span style="color:var(--accent)">+ Collectible: ${r.name}</span>`);
+        }
+      }
       if (parts.length) {
         body += `<div style="padding:10px 14px;background:var(--bg-panel-2);border:1px solid var(--border);border-radius:4px;text-align:left;">
           <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">REWARDS EARNED</div>
-          <p class="reward-line" style="margin:0;font-weight:600;font-size:13px;">${parts.join(' • ')}</p>
+          <p class="reward-line" style="margin:0;font-weight:600;font-size:13px;line-height:1.6;">${parts.join('<br>')}</p>
         </div>`;
       }
     }

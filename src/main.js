@@ -843,32 +843,56 @@ function startMinigame() {
 
 function calculateAndApplyMinigameRewards(result) {
   if (!result) return null;
-  const rewards = CONFIG.nodes.rewards.minigame;
+
+  const hits = result.hits || 0;
+  const perfects = result.perfects || 0;
+  const totalAttempts = result.totalAttempts || 5;
+  const isAllPerfect = hits === totalAttempts && perfects === totalAttempts;
 
   let gold = 0;
-  let tech = 0;
-  let rewardRelic = null;
+  let heal = 0;
+  const relicsGained = [];
 
-  if (result.success) {
-    gold = rewards.gold + (result.perfect ? 10 : 0);
-    tech = rewards.tech;
-    rewardRelic = rewardRandomCollectible('MINIGAME DRILL');
+  if (isAllPerfect) {
+    gold = run.gainGold(40);
+    heal = run.maxHp - run.hp;
+    run.hp = run.maxHp;
+
+    const r1 = rewardRandomCollectible('FLAWLESS DRILL 1');
+    const r2 = rewardRandomCollectible('FLAWLESS DRILL 2');
+    if (r1) relicsGained.push(r1);
+    if (r2) relicsGained.push(r2);
+
+    addFeedEntry(`<span class="feed-heal">FLAWLESS DRILL: FULL HP RECOVERY & 2 COLLECTIBLES</span>`);
+  } else if (perfects >= 3) {
+    gold = run.gainGold(25);
+    const effectiveHeal = Math.round(50 * saveSystem.getHealingMultiplier());
+    heal = effectiveHeal;
+    run.healFlat(50);
+
+    const r1 = rewardRandomCollectible('PRECISION DRILL');
+    if (r1) relicsGained.push(r1);
+
+    addFeedEntry(`<span class="feed-heal">PRECISION DRILL: +${effectiveHeal} HP RECOVERED & 1 COLLECTIBLE</span>`);
+  } else if (hits >= 3) {
+    gold = run.gainGold(15);
+    addFeedEntry(`<span class="feed-gold">DRILL PASSED: +${gold} GOLD</span>`);
   } else {
-    gold = Math.max(3, Math.floor(rewards.gold * 0.3)); // consolation on failure
+    gold = run.gainGold(5);
+    addFeedEntry(`<span class="feed-gold">DRILL CONSOLATION: +${gold} GOLD</span>`);
   }
 
-  run.gainGold(gold);
-  if (tech > 0) saveSystem.addTechPoints(tech);
-  questSystem.reportCombatEvent('minigame', { perfect: result.perfect });
-
-  addFeedEntry(
-    result.success
-      ? `<span class="feed-gold">MINIGAME: +${gold} GOLD${tech ? `, +${tech} TP` : ''}</span>`
-      : `<span class="feed-gold">MINIGAME (consolation): +${gold} GOLD</span>`
-  );
+  questSystem.reportCombatEvent('minigame', { perfect: isAllPerfect });
   ui.updateRunHud(run);
 
-  return { gold, tech, relic: rewardRelic };
+  return {
+    gold,
+    heal,
+    relics: relicsGained,
+    hits,
+    perfects,
+    isAllPerfect,
+  };
 }
 
 function finishMinigame() {

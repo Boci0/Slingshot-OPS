@@ -356,6 +356,7 @@ export const CONFIG = {
     { id: 'rel_graviton', name: 'Singularity Core', desc: 'Direct impacts create a gravity pull drawing nearby enemies in', cost: 34, icon: '(@)', category: 'High-Tech' },
     { id: 'rel_pyro', name: 'Thermal Engine', desc: 'Impacts ignite targets, dealing +5 burn damage over time', cost: 30, icon: '(^)', category: 'Frontier' },
     { id: 'rel_cryo', name: 'Cryo Coil', desc: 'Freezes target on hit, slowing enemy launch speed on next turn', cost: 30, icon: '[*]', category: 'High-Tech' },
+    { id: 'rel_chain_lightning', name: 'Chain Reactor', desc: 'Defeating an enemy discharges chain lightning dealing 25 damage to all hostiles', cost: 35, icon: '[Z]', category: 'High-Tech' },
     { id: 'rel_time_warp', name: 'Flux Capacitor', desc: 'Overdrive ability cooldown reduced by 1 turn', cost: 30, icon: '[t]', category: 'High-Tech' },
     { id: 'rel_vector_engine', name: 'Vector Amplifier', desc: 'Launching at maximum power deals +30% bonus impact damage', cost: 32, icon: '[>]', category: 'High-Tech' },
     { id: 'rel_waraxe', name: 'Vanguard Waraxe', desc: '+3 Base ATK to squad', cost: 30, icon: '[x]', category: 'Frontier' },
