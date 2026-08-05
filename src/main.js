@@ -472,9 +472,14 @@ function startCombat(node) {
     const arch = CONFIG.enemyArchetypes[archetype];
     const isBoss = node.type === 'boss';
 
-    const finalHp = Math.round(tier.hp * arch.hpMult * hpMult * devHp * waveScale);
-    const finalAtk = Math.round((tier.atk * arch.atkMult * atkMult * devAtk * waveScale) * 100) / 100;
-    const finalDef = Math.max(0, Math.round((tier.def + arch.defBonus) * defMult) + devDef);
+    // At higher risk levels, enemies on later floors get an additional compounding bonus.
+    // At risk 15, floor 5: +40% on top of base risk scaling. Floors 1-2 feel minimal bonus.
+    const currentFloor = run.floor + 1;
+    const floorRiskBonus = 1 + currentFloor * (riskLevel / 15) * 0.08;
+
+    const finalHp = Math.round(tier.hp * arch.hpMult * hpMult * floorRiskBonus * devHp * waveScale);
+    const finalAtk = Math.round((tier.atk * arch.atkMult * atkMult * floorRiskBonus * devAtk * waveScale) * 100) / 100;
+    const finalDef = Math.max(0, Math.round((tier.def + arch.defBonus) * defMult * floorRiskBonus) + devDef);
 
     const xPct = count === 1 ? 0.75 : count === 2 ? 0.66 + i * 0.16 : 0.58 + i * 0.13;
 

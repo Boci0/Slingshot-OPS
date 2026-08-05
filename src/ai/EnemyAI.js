@@ -20,6 +20,10 @@ export class EnemyAI {
     // Per-battle modifiers (from node tier / run boons)
     this.thinkDelayOverride = null;
     this.aimErrorBonus = 0; // extra radians of error (e.g. "erratic" boons)
+    // Live references used to recalculate shot at fire time
+    this._enemyBall = null;
+    this._playerBall = null;
+    this._barriers = [];
   }
 
   get thinkingDelay() {
@@ -43,7 +47,10 @@ export class EnemyAI {
   startTurn(enemyBall, playerBall, barriers = []) {
     this.thinking = true;
     this.thinkTimer = 0;
-    this.pendingVelocity = this._calculateShot(enemyBall, playerBall, barriers);
+    this._enemyBall = enemyBall;
+    this._playerBall = playerBall;
+    this._barriers = barriers;
+    this.pendingVelocity = null; // calculated fresh at fire time
   }
 
   /**
@@ -55,7 +62,10 @@ export class EnemyAI {
     this.thinkTimer += dt;
     if (this.thinkTimer >= this.thinkingDelay) {
       this.thinking = false;
-      this.events.emit('enemy-launch', { velocity: this.pendingVelocity });
+      // Recalculate using the player's current live position so tether pulls
+      // and any drift during the think delay don't cause misses.
+      const velocity = this._calculateShot(this._enemyBall, this._playerBall, this._barriers);
+      this.events.emit('enemy-launch', { velocity });
       return true;
     }
     return false;

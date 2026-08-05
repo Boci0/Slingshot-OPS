@@ -275,6 +275,26 @@ export class Game {
     if (this.player) {
       this.slingshotInput.setAnchor(this.player.x, this.player.y);
     }
+
+    // Tick player burn (from pyromancer ignition)
+    if (this.player && this.player.burnTicks > 0) {
+      const burnDmg = this.player.burnDmg || 8;
+      this.player.hp = Math.max(0, this.player.hp - burnDmg);
+      this.player.burnTicks -= 1;
+      this._spawnHitParticles(this.player.x, this.player.y);
+      this.battleStats.playerDamageTaken += burnDmg;
+      this.events.emit('enemy-dealt-damage', { attacker: null, damage: burnDmg });
+      this.events.emit('enemy-ability', {
+        enemy: null,
+        ability: 'Thermal Burn',
+        desc: `You take ${burnDmg} burn damage! (${this.player.burnTicks} turns left)`,
+      });
+      if (this.player.hp <= 0) {
+        this._checkBattleEnd(this.player);
+        return;
+      }
+    }
+
     this.events.emit('player-turn-start');
   }
 
@@ -369,11 +389,24 @@ export class Game {
         this.player.vy = (dy / dist) * pullSpeed - 50;
         this.renderer.addScreenShake(12);
         soundEngine.playAbility('overdrive');
+
+        // Pull deals impact damage to the player
+        const pullDamage = 10;
+        this.player.hp = Math.max(0, this.player.hp - pullDamage);
+        this._spawnHitParticles(this.player.x, this.player.y);
+        this.battleStats.playerDamageTaken += pullDamage;
+        this.events.emit('enemy-dealt-damage', { attacker: enemy, damage: pullDamage });
+
         this.events.emit('enemy-ability', {
           enemy,
           ability: 'Graviton Tether Pull',
-          desc: 'Graviton Weaver pulled ally directly straight into impact trajectory!',
+          desc: `Graviton Weaver pulled you in, dealing ${pullDamage} impact damage!`,
         });
+
+        if (this.player.hp <= 0) {
+          this._checkBattleEnd(this.player);
+          return;
+        }
       }
     } else if (enemy.archetype === 'tactician') {
       let ralliedAny = false;
