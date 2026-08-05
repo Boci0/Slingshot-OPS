@@ -179,6 +179,41 @@ export const CONFIG = {
     floorHeight: 750, // floor map canvas height
   },
 
+  // --- Arena Obstacles & Floating Platforms ---
+  arenaLayouts: {
+    1: { platforms: [], obstacles: [] },
+    2: {
+      platforms: [{ x: 540, y: 380, w: 200, h: 16 }],
+      obstacles: [{ x: 620, y: 480, w: 40, h: 120, hp: 60, maxHp: 60, active: true }],
+    },
+    3: {
+      platforms: [
+        { x: 420, y: 340, w: 160, h: 16 },
+        { x: 700, y: 340, w: 160, h: 16 },
+      ],
+      obstacles: [{ x: 620, y: 450, w: 40, h: 150, hp: 90, maxHp: 90, active: true }],
+    },
+    4: {
+      platforms: [
+        { x: 380, y: 320, w: 140, h: 16 },
+        { x: 760, y: 320, w: 140, h: 16 },
+      ],
+      obstacles: [
+        { x: 520, y: 420, w: 35, h: 180, hp: 120, maxHp: 120, active: true },
+        { x: 720, y: 420, w: 35, h: 180, hp: 120, maxHp: 120, active: true },
+      ],
+    },
+    5: {
+      platforms: [
+        { x: 340, y: 280, w: 180, h: 16 },
+        { x: 760, y: 280, w: 180, h: 16 },
+      ],
+      obstacles: [
+        { x: 615, y: 360, w: 50, h: 240, hp: 200, maxHp: 200, active: true },
+      ],
+    },
+  },
+
   // --- Currency ---
   currency: {
     techPointName: 'Tech Points',
@@ -317,6 +352,10 @@ export const CONFIG = {
     // High-Tech & Energy
     { id: 'rel_calcifying_gel', name: 'Calcifying Gel', desc: '+5 DEF and -10% damage taken from all impacts', cost: 30, icon: '(o)', category: 'High-Tech' },
     { id: 'rel_energy_well', name: 'Energy Well', desc: 'Overdrive damage multiplier increased from 1.5x to 2.0x (+100% damage)', cost: 35, icon: '[!]', category: 'High-Tech' },
+    { id: 'rel_cluster', name: 'Cluster Splitter', desc: 'First wall bounce splits your shot into a micro-bullet cluster', cost: 32, icon: '[::]', category: 'High-Tech' },
+    { id: 'rel_graviton', name: 'Singularity Core', desc: 'Direct impacts create a gravity pull drawing nearby enemies in', cost: 34, icon: '(@)', category: 'High-Tech' },
+    { id: 'rel_pyro', name: 'Thermal Engine', desc: 'Impacts ignite targets, dealing +5 burn damage over time', cost: 30, icon: '(^)', category: 'Frontier' },
+    { id: 'rel_cryo', name: 'Cryo Coil', desc: 'Freezes target on hit, slowing enemy launch speed on next turn', cost: 30, icon: '[*]', category: 'High-Tech' },
     { id: 'rel_time_warp', name: 'Flux Capacitor', desc: 'Overdrive ability cooldown reduced by 1 turn', cost: 30, icon: '[t]', category: 'High-Tech' },
     { id: 'rel_vector_engine', name: 'Vector Amplifier', desc: 'Launching at maximum power deals +30% bonus impact damage', cost: 32, icon: '[>]', category: 'High-Tech' },
     { id: 'rel_waraxe', name: 'Vanguard Waraxe', desc: '+3 Base ATK to squad', cost: 30, icon: '[x]', category: 'Frontier' },

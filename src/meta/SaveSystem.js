@@ -170,6 +170,34 @@ export class SaveSystem {
     return 1 + (risk.plusCost || 0) / 100;
   }
 
+  exportSaveData() {
+    return JSON.stringify(this.data, null, 2);
+  }
+
+  importSaveData(jsonString) {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed || typeof parsed !== 'object') return false;
+      const defaults = this._defaults();
+      this.data = {
+        ...defaults,
+        ...parsed,
+        profile: { ...defaults.profile, ...(parsed.profile || {}) },
+        meta: { ...defaults.meta, ...(parsed.meta || {}) },
+        techTreePurchases: parsed.techTreePurchases || {},
+        upgrades: parsed.upgrades || {},
+        unlockedPerks: parsed.unlockedPerks || [],
+        techTree: parsed.techTree || {},
+        progression: { ...defaults.progression, ...(parsed.progression || {}) },
+      };
+      this.save();
+      return true;
+    } catch (e) {
+      console.warn('Failed to import save data:', e);
+      return false;
+    }
+  }
+
   reset() {
     localStorage.removeItem(STORAGE_KEY);
     this.data = this._load();

@@ -2,6 +2,8 @@
 // Custom physics engine.
 // Pure functions operating on ball state — usable both for the
 // live game and for deterministic AI simulation.
+// Supports world bounds, barrier rects, floating platforms, and
+// destructible obstacle blocks.
 // ============================================================
 
 import { CONFIG } from '../config.js';
@@ -40,11 +42,9 @@ export function resolveWorldCollisions(ball) {
     ball.y = W.groundY - r;
     if (ball.vy > 0) {
       ball.vy = -ball.vy * W.groundRestitution;
-      // Ground friction
       ball.vx *= W.groundFriction;
       events.push({ type: 'ground', ball });
     }
-    // Dampen low-velocity micro-rolling so balls settle cleanly
     if (Math.abs(ball.vy) < 15) ball.vy = 0;
     if (Math.abs(ball.vx) < 15) ball.vx *= 0.8;
     if (Math.abs(ball.vx) < 4) ball.vx = 0;
@@ -83,14 +83,9 @@ export function resolveBallCollision(a, b) {
 
   if (dist >= minDist || dist === 0) return null;
 
-  // Capture pre-collision speeds for damage attribution.
-  // The impulse is applied below BEFORE the event is returned, so
-  // post-collision speeds would misattribute the attacker (the
-  // striking ball loses speed, the victim gains it).
   const speedAPre = Math.hypot(a.vx, a.vy);
   const speedBPre = Math.hypot(b.vx, b.vy);
 
-  // Separate overlapping balls
   const overlap = minDist - dist;
   const nx = dx / dist;
   const ny = dy / dist;
@@ -99,18 +94,15 @@ export function resolveBallCollision(a, b) {
   b.x += (nx * overlap) / 2;
   b.y += (ny * overlap) / 2;
 
-  // Relative velocity along the normal
   const rvx = b.vx - a.vx;
   const rvy = b.vy - a.vy;
   const velAlongNormal = rvx * nx + rvy * ny;
 
-  // Only resolve if balls are approaching
   if (velAlongNormal > 0) return null;
 
   const restitution = W.ballRestitution;
   const j = -(1 + restitution) * velAlongNormal;
 
-  // Equal mass assumption (both balls same radius/density)
   a.vx -= (j * nx) / 2;
   a.vy -= (j * ny) / 2;
   b.vx += (j * nx) / 2;
@@ -127,9 +119,7 @@ export function resolveBallCollision(a, b) {
 }
 
 /**
- * Resolve collisions between a ball and static barrier rectangles.
- * Barriers are axis-aligned rectangles { x, y, w, h } that block shots.
- * Returns collision events: { type: 'barrier', ball, barrier, side }
+ * Resolve collisions between a ball and static barrier rectangles or destructible obstacles.
  */
 export function resolveBarrierCollisions(ball, barriers) {
   const events = [];
@@ -138,7 +128,6 @@ export function resolveBarrierCollisions(ball, barriers) {
   for (const barrier of barriers) {
     if (!barrier.active) continue;
 
-    // Closest point on the rectangle to the ball center
     const cx = Math.max(barrier.x, Math.min(ball.x, barrier.x + barrier.w));
     const cy = Math.max(barrier.y, Math.min(ball.y, barrier.y + barrier.h));
     const dx = ball.x - cx;
@@ -154,7 +143,6 @@ export function resolveBarrierCollisions(ball, barriers) {
       nx = dx / dist;
       ny = dy / dist;
     } else {
-      // Ball center is inside the barrier — push out along the smallest axis
       const left = ball.x - barrier.x;
       const right = barrier.x + barrier.w - ball.x;
       const top = ball.y - barrier.y;
@@ -166,12 +154,14 @@ export function resolveBarrierCollisions(ball, barriers) {
       else { nx = 0; ny = 1; }
     }
 
-    // Reflect velocity if moving into the barrier
     const velDot = ball.vx * nx + ball.vy * ny;
     if (velDot < 0) {
       const impactSpeed = Math.abs(velDot);
-      // Damage the barrier on hard impacts (breakable shields)
-      if (impactSpeed >= CONFIG.damage.barrierImpactMinSpeed) {
+      if (barrier.maxHp && impactSpeed >= 30) {
+        const dmg = Math.round(impactSpeed * 0.15);
+        barrier.hp = Math.max(0, (barrier.hp ?? barrier.maxHp) - dmg);
+        if (barrier.hp <= 0) barrier.active = false;
+      } else if (impactSpeed >= CONFIG.damage.barrierImpactMinSpeed) {
         const dmg = Math.round(impactSpeed * 0.05);
         barrier.hp = Math.max(0, (barrier.hp ?? CONFIG.damage.barrierHp) - dmg);
         if (barrier.hp <= 0) barrier.active = false;
@@ -195,18 +185,18 @@ export function stepBall(ball, dt) {
 }
 
 /**
- * Step the full simulation for a list of balls, including barriers.
- * Returns all collision events this step.
+ * Step the full simulation for a list of balls, including barriers, platforms, and obstacles.
  */
-export function stepWorld(balls, dt, barriers = []) {
+export function stepWorld(balls, dt, barriers = [], platforms = [], obstacles = []) {
   const events = [];
+
+  const rects = [...barriers, ...platforms, ...obstacles];
 
   for (const ball of balls) {
     events.push(...stepBall(ball, dt));
-    events.push(...resolveBarrierCollisions(ball, barriers));
+    events.push(...resolveBarrierCollisions(ball, rects));
   }
 
-  // Ball-ball collisions
   for (let i = 0; i < balls.length; i++) {
     for (let j = i + 1; j < balls.length; j++) {
       const evt = resolveBallCollision(balls[i], balls[j]);
@@ -217,9 +207,6 @@ export function stepWorld(balls, dt, barriers = []) {
   return events;
 }
 
-/**
- * Check if a ball is settled (slow enough to count as stopped).
- */
 export function isSettled(ball) {
   return Math.hypot(ball.vx, ball.vy) < W.settleSpeed;
 }

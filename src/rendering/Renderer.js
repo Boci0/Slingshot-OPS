@@ -1,8 +1,8 @@
 // ============================================================
 // Renderer — tactical presentation layer.
 // Draws the arena, combatants (player + multiple enemies),
-// HP bars, barriers, trajectory, and overlays with a clean,
-// professional military-HUD aesthetic.
+// HP bars, barriers, trajectory, speed motion trails, screen shake,
+// and overlays with a clean, professional military-HUD aesthetic.
 // ============================================================
 
 import { CONFIG } from '../config.js';
@@ -16,6 +16,14 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     canvas.width = W.width;
     canvas.height = W.height;
+
+    this.shakeTime = 0;
+    this.shakeIntensity = 0;
+  }
+
+  addScreenShake(intensity = 10) {
+    this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+    this.shakeTime = 0.3; // 300ms duration
   }
 
   render(world) {
@@ -29,12 +37,29 @@ export class Renderer {
     const enemyList = enemies || (world && world.enemy ? [world.enemy] : []);
     const livingEnemies = enemyList.filter((e) => e && e.hp > 0);
 
+    // Calculate camera shake offset
+    let shakeX = 0;
+    let shakeY = 0;
+    if (this.shakeTime > 0) {
+      this.shakeTime -= 0.016;
+      shakeX = (Math.random() * 2 - 1) * this.shakeIntensity;
+      shakeY = (Math.random() * 2 - 1) * this.shakeIntensity;
+      this.shakeIntensity *= 0.88;
+      if (this.shakeTime <= 0) this.shakeIntensity = 0;
+    }
+
+    ctx.save();
+    if (shakeX !== 0 || shakeY !== 0) {
+      ctx.translate(shakeX, shakeY);
+    }
+
     this._drawArena(ctx);
     this._drawGrid(ctx);
     this._drawVignette(ctx);
+    this._drawPlatformsAndObstacles(ctx, world.platforms || [], world.obstacles || []);
     this._drawParticles(ctx, particles);
     this._drawBarriers(ctx, world.barriers || []);
-    if (player.hp > 0) this._drawBall(ctx, player);
+    if (player && player.hp > 0) this._drawBall(ctx, player);
     for (const enemy of livingEnemies) this._drawBall(ctx, enemy);
     this._drawHpBars(ctx, player, livingEnemies);
     if (world.slingshotInput) {
@@ -44,6 +69,8 @@ export class Renderer {
     if (turnSystem.phase === 'GAME_OVER') {
       this._drawGameOver(ctx, world.winner, world.battleSummary);
     }
+
+    ctx.restore();
   }
 
   _drawArena(ctx) {
@@ -98,9 +125,53 @@ export class Renderer {
     ctx.fillRect(0, 0, W.width, W.groundY);
   }
 
+  _drawPlatformsAndObstacles(ctx, platforms, obstacles) {
+    // Floating platforms
+    for (const p of platforms) {
+      ctx.fillStyle = '#28364c';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = '#4fc3f7';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(p.x, p.y, p.w, p.h);
+    }
+
+    // Destructible obstacle blocks
+    for (const ob of obstacles) {
+      if (!ob.active) continue;
+      const pct = Math.max(0, ob.hp / ob.maxHp);
+      ctx.fillStyle = `rgba(224, 101, 92, ${0.2 + pct * 0.5})`;
+      ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+      ctx.strokeStyle = '#e0655c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ob.x, ob.y, ob.w, ob.h);
+
+      // HP bar
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(ob.x, ob.y - 6, ob.w, 4);
+      ctx.fillStyle = '#e0655c';
+      ctx.fillRect(ob.x, ob.y - 6, ob.w * pct, 4);
+    }
+  }
+
   _drawBall(ctx, ball) {
     const r = ball.radius;
     const isFlashing = ball.flashTimer > 0;
+
+    // Speed Motion Trail behind fast-moving ball
+    const speed = Math.hypot(ball.vx || 0, ball.vy || 0);
+    if (speed > 120) {
+      const trailLength = Math.min(6, Math.floor(speed / 120));
+      for (let i = 1; i <= trailLength; i++) {
+        const tx = ball.x - ball.vx * 0.008 * i;
+        const ty = ball.y - ball.vy * 0.008 * i;
+        ctx.globalAlpha = (1 - i / (trailLength + 1)) * 0.45;
+        ctx.fillStyle = ball.color;
+        ctx.beginPath();
+        ctx.arc(tx, ty, r * (1 - i * 0.1), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
 
     // Ground shadow
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -130,7 +201,7 @@ export class Renderer {
       ctx.restore();
     }
 
-    // Rim light ring behind the ball for a "unit" feel
+    // Rim light ring behind the ball
     ctx.strokeStyle = isFlashing ? '#ffffff' : 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -180,7 +251,7 @@ export class Renderer {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Tactical emblem instead of a cartoon face
+    // Tactical emblem
     this._drawEmblem(ctx, ball, r);
   }
 
@@ -203,17 +274,14 @@ export class Renderer {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     switch (ball.archetype) {
       case 'tank':
-        // Shield block
         ctx.strokeRect(ball.x - r * 0.35, ball.y - r * 0.35, r * 0.7, r * 0.7);
         break;
       case 'striker':
-        // Double slash
         ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
         ctx.fillRect(ball.x - r * 0.25, ball.y - r * 0.45, 3, r * 0.6);
         ctx.fillRect(ball.x + r * 0.15, ball.y - r * 0.45, 3, r * 0.6);
         break;
       default:
-        // Standard inverted chevron
         ctx.beginPath();
         ctx.moveTo(ball.x, ball.y + r * 0.45);
         ctx.lineTo(ball.x - r * 0.35, ball.y - r * 0.2);
@@ -229,14 +297,14 @@ export class Renderer {
     const barHeight = 20;
     const y = 42;
 
-    this._drawHpBar(ctx, player, 35, y, barWidth, barHeight, C.hpBarFg);
+    if (player) {
+      this._drawHpBar(ctx, player, 35, y, barWidth, barHeight, C.hpBarFg);
+    }
 
-    // Draw each enemy HP bar stacked on the right side
     enemies.forEach((enemy, i) => {
       const ey = y + i * 52;
       this._drawHpBar(ctx, enemy, W.width - 35 - barWidth, ey, barWidth, barHeight, C.hpBarEnemyFg);
 
-      // Unit header label (Name + Ability)
       ctx.textAlign = 'right';
       ctx.font = '700 14px "Segoe UI", sans-serif';
 
@@ -248,11 +316,12 @@ export class Renderer {
       ctx.fillText(title, W.width - 35, ey - 6);
     });
 
-    // Player label
-    ctx.textAlign = 'left';
-    ctx.fillStyle = C.text;
-    ctx.font = '700 15px "Segoe UI", sans-serif';
-    ctx.fillText('YOU', 35, y - 8);
+    if (player) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = C.text;
+      ctx.font = '700 15px "Segoe UI", sans-serif';
+      ctx.fillText('YOU', 35, y - 8);
+    }
   }
 
   _drawHpBar(ctx, ball, x, y, w, h, fillColor) {
@@ -265,7 +334,6 @@ export class Renderer {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w * pct, h);
 
-    // Cyan Shield HP overlay
     const shieldHp = ball.team === 'player' ? (this.worldRef?.run?.shieldHp || 0) : 0;
     if (shieldHp > 0) {
       const shieldPct = Math.min(1, shieldHp / ball.maxHp);
@@ -291,7 +359,6 @@ export class Renderer {
       if (!barrier.active) continue;
       const { x, y, w, h } = barrier;
 
-      // Glowing shield panel
       const grad = ctx.createLinearGradient(x, y, x + w, y);
       grad.addColorStop(0, 'rgba(122, 162, 255, 0.15)');
       grad.addColorStop(0.5, 'rgba(122, 162, 255, 0.55)');
@@ -299,16 +366,13 @@ export class Renderer {
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, w, h);
 
-      // Border
       ctx.strokeStyle = 'rgba(122, 162, 255, 0.9)';
       ctx.lineWidth = 2;
       ctx.strokeRect(x, y, w, h);
 
-      // Energy core line
       ctx.fillStyle = 'rgba(200, 220, 255, 0.8)';
       ctx.fillRect(x + w / 2 - 1, y + 6, 2, h - 12);
 
-      // Shield integrity bar
       const maxHp = CONFIG.damage.barrierHp;
       const barW = w + 8;
       const pct = Math.max(0, (barrier.hp ?? maxHp) / maxHp);
@@ -323,10 +387,11 @@ export class Renderer {
     for (const p of particles) {
       ctx.globalAlpha = Math.max(0, Math.min(1, p.life / p.maxLife));
       if (p.type === 'shockwave') {
+        const radius = p.radius + (p.maxRadius - p.radius) * (1 - p.life / p.maxLife);
         ctx.strokeStyle = '#ff8a65';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.currentRadius || p.radius, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
         ctx.stroke();
       } else {
         ctx.fillStyle = p.color;
@@ -367,7 +432,6 @@ export class Renderer {
     ctx.fillStyle = 'rgba(8, 12, 18, 0.82)';
     ctx.fillRect(0, 0, W.width, W.height);
 
-    // Accent line
     ctx.fillStyle = C.accent;
     ctx.fillRect(W.width / 2 - 120, W.height / 2 - 86, 240, 2);
 

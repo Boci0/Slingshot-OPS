@@ -1,17 +1,16 @@
 // ============================================================
 // UIManager — DOM-based interface layer.
 // Owns the main menu, tech tree view, run map screen, node
-// modals (encounter/shop/rest/combat), battle HUD, and results.
-// No game logic here — it renders state and forwards actions
-// through callbacks.
+// modals (encounter/shop/rest/combat), battle HUD, save export/import,
+// and results screen.
 // ============================================================
 
 import { CONFIG } from '../config.js';
 import { NODE_STYLE } from '../rendering/RogueMapRenderer.js';
+import { saveSystem } from '../meta/SaveSystem.js';
+import { soundEngine } from '../utils/SoundEngine.js';
 
 const C = CONFIG.colors;
-
-import { saveSystem } from '../meta/SaveSystem.js';
 
 export class UIManager {
   /**
@@ -41,6 +40,57 @@ export class UIManager {
     if (btnPlay) btnPlay.addEventListener('click', () => this.cb.onPlay());
     if (btnTech) btnTech.addEventListener('click', () => this.cb.onOpenTech());
 
+    // Save Export & Import buttons
+    const btnExportSave = document.getElementById('btn-export-save');
+    const btnImportSave = document.getElementById('btn-import-save');
+    const btnResetData = document.getElementById('btn-reset-data');
+
+    if (btnExportSave) {
+      btnExportSave.addEventListener('click', () => {
+        soundEngine.playUI();
+        const json = saveSystem.exportSaveData();
+        navigator.clipboard?.writeText(json).then(() => {
+          alert('Save data copied to clipboard!');
+        }).catch(() => {
+          prompt('Copy save JSON manually:', json);
+        });
+      });
+    }
+
+    if (btnImportSave) {
+      btnImportSave.addEventListener('click', () => {
+        soundEngine.playUI();
+        const input = prompt('Paste your save data JSON string:');
+        if (input) {
+          if (saveSystem.importSaveData(input)) {
+            alert('Save data successfully imported!');
+            location.reload();
+          } else {
+            alert('Invalid save data JSON!');
+          }
+        }
+      });
+    }
+
+    if (btnResetData) {
+      btnResetData.addEventListener('click', () => {
+        soundEngine.playUI();
+        if (confirm('Are you sure you want to reset ALL save data and tech tree progress?')) {
+          saveSystem.reset();
+          location.reload();
+        }
+      });
+    }
+
+    // Audio Mute Toggle button
+    const btnAudioToggle = document.getElementById('btn-audio-toggle');
+    if (btnAudioToggle) {
+      btnAudioToggle.addEventListener('click', () => {
+        const muted = soundEngine.toggleMute();
+        btnAudioToggle.textContent = muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+      });
+    }
+
     // Tech screen
     const btnTechBack = document.getElementById('btn-tech-back');
     if (btnTechBack) btnTechBack.addEventListener('click', () => this.cb.onBackToMenu());
@@ -49,6 +99,7 @@ export class UIManager {
     const btnRetreat = document.getElementById('btn-retreat');
     if (btnRetreat) {
       btnRetreat.addEventListener('click', () => {
+        soundEngine.playUI();
         if (confirm('Abandon current operation? All run progress will be lost.')) {
           this.closeModal();
           this.cb.onRetreat();
@@ -98,576 +149,183 @@ export class UIManager {
         .filter((n) => n.branch === branch.key);
 
       for (const node of nodes) {
-        const lvl = techTree.getNodeLevel(node.id);
-        const maxLvl = node.maxLevel || 1;
-        const isMaxed = techTree.isMaxed(node.id);
-        const unlocked = techTree.isUnlocked(node.id);
-        const affordable = techTree.canPurchase(node.id);
-        const nextCost = techTree.getNodeNextCost(node.id);
-
-        const rankDots = maxLvl > 1
-          ? `<div style="font-size:11px;color:var(--accent);margin:2px 0;">${'[#]'.repeat(lvl)}${'[-]'.repeat(maxLvl - lvl)} <span style="font-size:10px;color:var(--text-dim);">(Rank ${lvl}/${maxLvl})</span></div>`
-          : '';
-
-        const row = document.createElement('div');
-        row.className = `tech-node ${isMaxed ? 'owned' : lvl > 0 ? 'part-owned' : ''} ${!unlocked ? 'locked' : ''}`;
-        row.innerHTML = `
-          <div class="tech-node-head">
-            <span class="tech-icon">${node.icon || '[*]'}</span>
-            <span class="tech-name">${node.label}</span>
-            ${isMaxed ? '<span class="tech-owned">MAXED</span>' : `<span class="tech-cost">${nextCost} TP</span>`}
-          </div>
-          ${rankDots}
+        const card = document.createElement('div');
+        const purchased = saveSystem.hasTechNode(node.id);
+        card.className = `tech-card ${purchased ? 'purchased' : ''}`;
+        card.innerHTML = `
+          <div class="tech-name">${node.name}</div>
           <div class="tech-desc">${node.desc}</div>
+          <div class="tech-cost">${purchased ? 'PURCHASED' : `${node.cost} TP`}</div>
         `;
-
-        if (!isMaxed && unlocked) {
-          const btn = document.createElement('button');
-          btn.className = `btn ${affordable ? 'btn-accent' : 'btn-disabled'}`;
-          btn.textContent = affordable ? (lvl > 0 ? `UPGRADE (${nextCost} TP)` : `UNLOCK (${nextCost} TP)`) : 'NOT ENOUGH TP';
-          btn.addEventListener('click', () => {
-            if (affordable) {
-              this.cb.onTechPurchase(node.id);
-            }
+        if (!purchased) {
+          card.addEventListener('click', () => {
+            soundEngine.playUI();
+            this.cb.onBuyTech(node.id);
           });
-          row.appendChild(btn);
         }
-
-        col.appendChild(row);
+        col.appendChild(card);
       }
-
       container.appendChild(col);
     }
-
-    // Refresh stats line
-    const stats = techTree.getPermanentStats();
-    const parts = [
-      `+${Math.round(stats.atkBonus * 100)}% ATK`,
-      `+${stats.hpBonus} HP`,
-      `+${stats.defBonus} DEF`,
-    ];
-    if (stats.startGoldBonus) parts.push(`+${stats.startGoldBonus} Start Gold`);
-    if (stats.shopDiscountBonus) parts.push(`-${Math.round(stats.shopDiscountBonus * 100)}% Shop Cost`);
-
-    document.getElementById('tech-apply').textContent = `Applied: ${parts.join(' - ')}`;
   }
 
-  // ---------- Run map screen ----------
-
-  showRunScreen(run, mapInstance, floor) {
-    const mapView = document.getElementById('map-view');
-    const battleView = document.getElementById('battle-view');
-    if (mapView) mapView.classList.remove('hidden');
-    if (battleView) battleView.classList.add('hidden');
-
+  showRunMap() {
     this._setVisible('run');
-    this.updateRunHud(run);
-    this.renderMap(run, mapInstance, floor);
-    this.renderQuests(run);
-    this.renderRelics(run);
+    this.screens.battleHud.classList.add('hidden');
+    document.getElementById('battle-view').classList.add('hidden');
+    document.getElementById('map-view').classList.remove('hidden');
   }
 
-  updateRunHud(run) {
+  showBattleView() {
+    this.screens.battleHud.classList.remove('hidden');
+    document.getElementById('map-view').classList.add('hidden');
+    document.getElementById('battle-view').classList.remove('hidden');
+  }
+
+  showResult(won, summary, questsCompleted = []) {
+    this._setVisible('result');
+    this.screens.battleHud.classList.add('hidden');
+
+    const titleEl = document.getElementById('result-title');
+    const subEl = document.getElementById('result-sub');
+    const tpEl = document.getElementById('result-tp');
+
+    if (won) {
+      titleEl.textContent = 'OPERATION SUCCESSFUL';
+      titleEl.style.color = '#5fd3a8';
+      subEl.textContent = `Completed 5 Floor Operation • ${summary.kills || 0} Hostiles Eliminated`;
+    } else {
+      titleEl.textContent = 'OPERATION FAILED';
+      titleEl.style.color = '#e0655c';
+      subEl.textContent = `Squad wiped on Floor ${summary.floor || 1} • ${summary.kills || 0} Hostiles Eliminated`;
+    }
+
+    const tpEarned = (summary.floorsCleared || 1) * 3 + (won ? 15 : 0);
+    tpEl.innerHTML = `GAINED <strong class="accent">+${tpEarned} TECH POINTS</strong>`;
+  }
+
+  // ---------- HUD updates ----------
+
+  updateRunSidebar(run) {
+    if (!run) return;
     document.getElementById('run-hp').textContent = `${Math.ceil(run.hp)}/${run.maxHp}`;
-    const actEl = document.getElementById('run-actions');
-    if (actEl) actEl.textContent = `${run.floorActions ?? 5}`;
+    document.getElementById('run-actions').textContent = run.floorActions;
     document.getElementById('run-gold').textContent = `${run.gold}G`;
-    const bonusPct = Math.round((run.atkBonusPct || 0) * 100);
-    document.getElementById('run-atk').textContent = `${run.baseAtk || 10} (+${bonusPct}%)`;
-    document.getElementById('run-def').textContent = `${run.def}`;
-    document.getElementById('run-floor').textContent = run.floorProgress;
+    document.getElementById('run-atk').textContent = `${(run.atk * 100).toFixed(0)}%`;
+    document.getElementById('run-def').textContent = run.def;
+    document.getElementById('run-floor').textContent = `${run.floor}/${CONFIG.map.floors}`;
 
-    // Boon chips
-    const container = document.getElementById('run-boons');
-    container.innerHTML = '';
-    for (const id of run.boons) {
-      const def = CONFIG.boons.find((b) => b.id === id);
-      if (!def) continue;
-      const chip = document.createElement('span');
-      chip.className = 'boon-chip';
-      chip.style.borderColor = def.color;
-      chip.style.color = def.color;
-      chip.textContent = def.name;
-      chip.title = def.desc;
-      container.appendChild(chip);
-    }
-    if (run.boons.length === 0) {
-      container.innerHTML = '<span class="dim-text">No boons</span>';
+    // Render floor tabs
+    const tabsContainer = document.getElementById('run-floortabs');
+    if (tabsContainer) {
+      tabsContainer.innerHTML = '';
+      for (let f = 1; f <= CONFIG.map.floors; f++) {
+        const tab = document.createElement('button');
+        const isCurrent = f === run.floor;
+        tab.className = `floor-tab ${isCurrent ? 'active' : ''}`;
+        tab.textContent = `FL ${f}`;
+        tabsContainer.appendChild(tab);
+      }
     }
 
-    this.renderRelics(run);
-    this.renderQuests(run);
-  }
-
-  renderMap(run, mapInstance, floor) {
-    const canvas = document.getElementById('map-canvas');
-    // RogueMapRenderer instance is managed by the App; we render via callback.
-    this.cb.onRenderMap(canvas, floor);
-  }
-
-  renderQuests(run) {
-    const container = document.getElementById('run-quests');
-    container.innerHTML = '';
-    const quests = run.questSystem?.getActiveQuests?.() ?? [];
-    if (quests.length === 0) {
-      container.innerHTML = '<span class="dim-text">No active quests</span>';
-      return;
-    }
-    for (const q of quests) {
-      const item = document.createElement('div');
-      item.className = `quest-item ${q.completed ? 'done' : ''}`;
-
-      let counterText = '';
-      if (q.id === 'quest_shopping') {
-        const spent = Math.min(40, run.totalGoldSpent || 0);
-        counterText = `${spent}/40 Gold`;
-      } else if (q.id === 'quest_perfect') {
-        const fl = Math.min(5, (run.floor || 0) + 1);
-        counterText = `${fl}/5 Floors`;
-      } else if (q.id === 'quest_rest') {
-        const h = Math.min(40, run.maxRestHealed || 0);
-        counterText = `${h}/40 HP`;
+    // Render Relics
+    const relicsContainer = document.getElementById('run-relics');
+    if (relicsContainer) {
+      relicsContainer.innerHTML = '';
+      if (!run.relics.length) {
+        relicsContainer.innerHTML = '<span class="dim-text">No collectibles acquired</span>';
       } else {
-        counterText = q.completed ? '1/1' : '0/1';
+        for (const relId of run.relics) {
+          const def = CONFIG.relics.find((r) => r.id === relId);
+          if (!def) continue;
+          const chip = document.createElement('div');
+          chip.className = 'relic-chip';
+          chip.title = `${def.name}: ${def.desc}`;
+          chip.innerHTML = `<span>${def.icon}</span> <strong>${def.name}</strong>`;
+          relicsContainer.appendChild(chip);
+        }
+      }
+    }
+
+    // Render Quests
+    const questsContainer = document.getElementById('run-quests');
+    if (questsContainer && run.questSystem) {
+      questsContainer.innerHTML = '';
+      const active = run.questSystem.getActiveQuests();
+      for (const q of active) {
+        const div = document.createElement('div');
+        div.className = `quest-item ${q.completed ? 'completed' : ''}`;
+        div.innerHTML = `
+          <div class="quest-title">${q.title}</div>
+          <div class="quest-desc">${q.desc}</div>
+          <div class="quest-progress">${q.progress}/${q.target}</div>
+        `;
+        questsContainer.appendChild(div);
+      }
+    }
+  }
+
+  updateBattleHud(nodeType, floor, gold, abilities) {
+    document.getElementById('battle-node').textContent = nodeType.toUpperCase();
+    document.getElementById('battle-floor').textContent = `FLOOR ${floor}`;
+    document.getElementById('battle-gold').textContent = `${gold}G`;
+
+    if (abilities) {
+      const ov = abilities.overdrive;
+      const ba = abilities.barrier;
+
+      const btnOv = document.getElementById('btn-overdrive');
+      const cdOv = document.getElementById('cd-overdrive');
+      if (btnOv && cdOv) {
+        btnOv.disabled = !ov.ready;
+        cdOv.textContent = ov.ready ? 'READY' : `${ov.cooldownLeft}T`;
       }
 
-      item.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-          <span class="quest-name" style="font-weight:600;font-size:12px;color:${q.completed ? 'var(--green)' : 'var(--text)'}">
-            ${q.completed ? '[x]' : '[-]'} ${q.name}
-          </span>
-          <span style="font-family:var(--mono);font-size:11px;color:${q.completed ? 'var(--green)' : 'var(--accent)'};font-weight:700;">
-            +${q.reward} TP
-          </span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-dim);">
-          <span>${q.desc}</span>
-          <span style="font-family:var(--mono);font-weight:600;margin-left:6px;color:${q.completed ? 'var(--green)' : 'var(--accent)'}">[${counterText}]</span>
-        </div>
-      `;
-      container.appendChild(item);
+      const btnBa = document.getElementById('btn-barrier');
+      const cdBa = document.getElementById('cd-barrier');
+      if (btnBa && cdBa) {
+        btnBa.disabled = !ba.ready;
+        cdBa.textContent = ba.ready ? 'READY' : `${ba.cooldownLeft}T`;
+      }
     }
   }
 
-  // ---------- Node modal ----------
+  // ---------- Modals ----------
 
-  openModal(title, bodyHTML, actionsHTML) {
+  showNodeModal(title, bodyHtml, actionsArray) {
     this.modalTitle.textContent = title;
-    this.modalBody.innerHTML = bodyHTML;
-    this.modalActions.innerHTML = actionsHTML;
-    this.nodeModal.classList.add('open');
+    this.modalBody.innerHTML = bodyHtml;
+    this.modalActions.innerHTML = '';
+
+    for (const act of actionsArray) {
+      const btn = document.createElement('button');
+      btn.className = `btn ${act.btnClass || 'btn-primary'}`;
+      btn.textContent = act.label;
+      btn.addEventListener('click', () => {
+        soundEngine.playUI();
+        act.onClick();
+      });
+      this.modalActions.appendChild(btn);
+    }
+
+    this.nodeModal.classList.remove('hidden');
   }
 
   closeModal() {
-    this.nodeModal.classList.remove('open');
+    this.nodeModal.classList.add('hidden');
   }
 
-  /** Craft standard action buttons bound to callbacks. */
-  _actionButton(text, cls, onClick) {
-    const b = document.createElement('button');
-    b.className = `btn ${cls}`;
-    b.textContent = text;
-    b.addEventListener('click', onClick);
-    return b;
-  }
+  // ---------- Internal Helpers ----------
 
-  showNodeIntro(node, run) {
-    const style = NODE_STYLE[node.type] || NODE_STYLE.combat;
-    const labels = {
-      combat: 'HOSTILE CONTACT',
-      elite: 'ELITE HOSTILE DETECTED',
-      miniboss: 'MINI-BOSS COMMANDER',
-      boss: 'HIGH-VALUE TARGET',
-      encounter: 'SIGNAL DETECTED',
-      shop: 'SUPPLY DEPOT',
-      rest: 'SAFE ZONE',
-      minigame: 'PRECISION DRILL',
-      entry: 'START',
-    };
-    const title = labels[node.type] || node.type.toUpperCase();
-
-    const body = `
-      <div class="modal-node-icon" style="color:${style.color}">${style.icon}</div>
-      <p>${this._nodeDescription(node)}</p>
-    `;
-
-    let actions = '';
-    if (node.type === 'combat' || node.type === 'elite' || node.type === 'miniboss' || node.type === 'boss') {
-      actions += `<div class="btn-row">
-        <button class="btn btn-danger" data-act="fight">ENGAGE</button>
-        <button class="btn" data-act="retreat">RETREAT</button>
-      </div>`;
-    } else {
-      actions = `<div class="btn-row"><button class="btn btn-accent" data-act="proceed">PROCEED</button></div>`;
-    }
-
-    this.openModal(title, body, actions);
-    this._bindModalActions(node);
-  }
-
-  _bindModalActions(node) {
-    const buttons = this.modalActions.querySelectorAll('button[data-act]');
-    buttons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        this.closeModal();
-        const act = btn.dataset.act;
-        if (act === 'fight') this.cb.onNodeFight(node);
-        else if (act === 'retreat') this.cb.onNodeRetreat(node);
-        else if (act === 'proceed') this.cb.onNodeProceed(node);
-      });
-    });
-  }
-
-  _nodeDescription(node) {
-    switch (node.type) {
-      case 'combat':
-        return 'A hostile unit blocks the path. Eliminate it to earn gold and tech data.';
-      case 'elite':
-        return 'A heavily armed elite unit. High risk, high reward.';
-      case 'miniboss':
-        return 'A sector mini-boss! Defeat it for 2 Relic Collectibles and +50 Extra Gold.';
-      case 'boss':
-        return 'The sector commander. Eliminate it to complete the operation.';
-      case 'encounter':
-        return 'An anomalous signal. Approaching may yield rewards — or damage.';
-      case 'shop':
-        return 'A supply depot. Spend gold on run-scoped enhancements.';
-      case 'rest':
-        return 'A safe zone. Restore HP before continuing.';
-      case 'minigame':
-        return 'A calibration drill. Precision yields bonus supplies.';
-      default:
-        return 'Proceed.';
-    }
-  }
-
-  showCombatResult(win, rewards, run) {
-    const title = win ? 'CONTACT ELIMINATED' : 'CONTACT LOST';
-    const color = win ? '#5fd3a8' : '#e0655c';
-    let body = `<p style="color:${color};font-weight:700">${win ? 'Objective complete.' : 'Retreat successful.'}</p>`;
-    if (rewards) {
-      const parts = [];
-      if (rewards.gold) parts.push(`+${rewards.gold} Gold`);
-      if (rewards.tech) parts.push(`+${rewards.tech} TP`);
-      if (rewards.heal) parts.push(`+${rewards.heal} HP`);
-      if (rewards.relic) parts.push(`<span style="color:var(--accent)">+ Collectible: ${rewards.relic.name}</span>`);
-      if (parts.length) body += `<p class="reward-line">${parts.join(' • ')}</p>`;
-    }
-    this.openModal('BATTLE REPORT', body,
-      `<div class="btn-row"><button class="btn btn-accent" data-act="continue">CONTINUE</button></div>`
-    );
-    const btn = this.modalActions.querySelector('button[data-act="continue"]');
-    btn.addEventListener('click', () => {
-      this.closeModal();
-      this.cb.onBattleReportContinue();
-    });
-  }
-
-  showEncounterOptions(encounter) {
-    const getPreview = (c) => {
-      const parts = [];
-      if (c.gainActions) parts.push(`<span class="tag-pill tag-action">+${c.gainActions} ACTION${c.gainActions > 1 ? 'S' : ''}</span>`);
-      if (c.loseHp) parts.push(`<span class="tag-pill tag-loss">-${c.loseHp} HP</span>`);
-      if (c.loseGold) parts.push(`<span class="tag-pill tag-loss">-${c.loseGold} G</span>`);
-      if (c.heal) parts.push(`<span class="tag-pill tag-gain">+${c.heal} HP</span>`);
-      if (c.gainMaxHp) parts.push(`<span class="tag-pill tag-gain">+${c.gainMaxHp} MAX HP</span>`);
-      if (c.gainGold) parts.push(`<span class="tag-pill tag-gold">+${c.gainGold} GOLD</span>`);
-      if (c.gainTech) parts.push(`<span class="tag-pill tag-tech">+${c.gainTech} TP</span>`);
-      if (c.gainRelic) parts.push(`<span class="tag-pill tag-gold">+ COLLECTIBLE</span>`);
-      if (c.gainBoon) {
-        const boon = CONFIG.boons.find((b) => b.id === c.gainBoon);
-        if (boon) parts.push(`<span class="tag-pill tag-boon">+ BOON: ${boon.name}</span>`);
-      }
-      return parts.length ? `<div class="encounter-tags">${parts.join('')}</div>` : '';
-    };
-
-    const actionHtml = encounter.choices.map((choice, i) => {
-      const preview = getPreview(choice);
-      return `<div class="btn-row">
-        <button class="btn btn-enc-option" data-enc="${i}">
-          <span class="enc-label">${choice.label.toUpperCase()}</span>
-          ${preview}
-        </button>
-      </div>`;
-    }).join('');
-
-    this.openModal(
-      encounter.title,
-      `<p class="enc-desc">${encounter.desc}</p>`,
-      actionHtml
-    );
-    this.modalActions.querySelectorAll('button[data-enc]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        this.closeModal();
-        this.cb.onEncounterChoice(Number(btn.dataset.enc));
-      });
-    });
-  }
-
-  showShop(run, shopItems = [], refreshesLeft = 3, refreshCost = 8) {
-    let body = '<div class="shop-header-info"><span class="accent">AVAILABLE COLLECTIBLES</span> • Refresh inventory up to 3 times per visit</div>';
-    body += '<div class="shop-grid" style="margin-top: 14px;">';
-
-    for (const relic of shopItems) {
-      const cost = Math.round(relic.cost * (run.shopDiscount || 1) * saveSystem.getShopPriceMultiplier());
-      const alreadyOwned = run.relics.includes(relic.id);
-      const affordable = run.gold >= cost;
-
-      body += `
-        <div class="shop-item" style="padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); background: var(--bg-panel-2);">
-          <div style="display: flex; gap: 10px; align-items: flex-start; flex: 1;">
-            <div style="font-size: 16px; font-weight: 700; color: var(--accent-gold); font-family: var(--mono);">${relic.icon || '[*]'}</div>
-            <div style="flex: 1;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong class="relic-name">${relic.name}</strong>
-                <span class="dim-text" style="font-size: 10px; text-transform: uppercase;">[${relic.category || 'Rhodes'}]</span>
-              </div>
-              <div class="shop-desc" style="margin-top: 4px; font-size: 12px; color: var(--text-dim);">${relic.desc}</div>
-            </div>
-          </div>
-          <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
-            <button class="btn ${alreadyOwned ? 'btn-disabled' : affordable ? 'btn-accent' : 'btn-disabled'}"
-              data-relic="${relic.id}" ${alreadyOwned ? 'disabled' : ''}>${alreadyOwned ? 'OWNED' : cost + ' G'}</button>
-          </div>
-        </div>
-      `;
-    }
-
-    body += '</div>';
-
-    this.openModal('SUPPLY DEPOT', body, '');
-
-    // Bind relic purchase buttons
-    this.modalBody.querySelectorAll('button[data-relic]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.relic;
-        const relic = CONFIG.relics.find((r) => r.id === id);
-        if (relic && this.cb.onRelicBuy(relic)) {
-          this.cb.onShopRefresh();
-        }
-      });
-    });
-
-    // Action buttons: Refresh & Leave
-    const canRefresh = refreshesLeft > 0 && run.gold >= refreshCost;
-    this.modalActions.innerHTML = `
-      <div class="btn-row" style="display: flex; gap: 12px; justify-content: flex-end; width: 100%;">
-        <button class="btn ${canRefresh ? 'btn-outline' : 'btn-disabled'}" data-act="refresh" ${canRefresh ? '' : 'disabled'}>
-          ${refreshesLeft > 0 ? `REFRESH (${refreshesLeft}/3 • ${refreshCost}G)` : 'NO REFRESHES LEFT'}
-        </button>
-        <button class="btn btn-primary" data-act="leave">LEAVE</button>
-      </div>
-    `;
-
-    const btnRefresh = this.modalActions.querySelector('button[data-act="refresh"]');
-    if (btnRefresh && canRefresh) {
-      btnRefresh.addEventListener('click', () => {
-        if (this.cb.onShopDoRefresh) {
-          this.cb.onShopDoRefresh();
-        }
-      });
-    }
-
-    const btnLeave = this.modalActions.querySelector('button[data-act="leave"]');
-    if (btnLeave) {
-      btnLeave.addEventListener('click', () => {
-        this.closeModal();
-        this.cb.onNodeProceed(undefined, true);
-      });
-    }
-  }
-
-  /** Render the relic detail panel on the run sidebar. */
-  renderRelics(run) {
-    const container = document.getElementById('run-relics');
-    if (!container) return;
-    container.innerHTML = '';
-    if (run.relics.length === 0) {
-      container.innerHTML = '<span class="dim-text">No relics</span>';
-      return;
-    }
-    for (const id of run.relics) {
-      const relic = CONFIG.relics.find((r) => r.id === id);
-      if (!relic) continue;
-      const item = document.createElement('div');
-      item.className = 'relic-item';
-      item.innerHTML = `
-        <div class="relic-name">◈ ${relic.name}</div>
-        <div class="relic-desc">${relic.desc}</div>
-      `;
-      container.appendChild(item);
-    }
-  }
-
-  showRest(run) {
-    let healVal = CONFIG.run.hpRegenPerRest || 30;
-    let maxHpVal = 0;
-    const notes = [];
-
-    if (run.permanent?.hasTitanCore) {
-      healVal = Math.round(healVal * 1.5);
-      maxHpVal += 10;
-      notes.push('Titan Core');
-    }
-
-    if (run.hasRelic?.('rel_family_feast')) {
-      maxHpVal += 15;
-      notes.push('Family Feast');
-    }
-
-    const healMultiplier = saveSystem.getHealingMultiplier();
-    const effectiveHealVal = Math.round(healVal * healMultiplier);
-
-    let buttonText = `HEAL ${effectiveHealVal} HP`;
-    if (maxHpVal > 0) {
-      buttonText += ` & +${maxHpVal} MAX HP`;
-    }
-
-    if (healMultiplier < 1) {
-      notes.push(`Risk Penalty (-${Math.round((1 - healMultiplier) * 100)}% Heal)`);
-    }
-
-    const noteHtml = notes.length
-      ? `<br><span style="font-size:12px;color:var(--accent);font-weight:600;">Active Bonuses: ${notes.join(' • ')}</span>`
-      : '';
-
-    this.openModal('SAFE ZONE',
-      `<p style="margin-bottom:12px;">Take a moment to recover. Choose an option:${noteHtml}</p>`,
-      `<div class="btn-row"><button class="btn btn-accent" data-rest="heal">${buttonText}</button></div>
-       <div class="btn-row"><button class="btn" data-rest="leave">CONTINUE</button></div>`
-    );
-    this.modalActions.querySelectorAll('button[data-rest]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        this.closeModal();
-        this.cb.onRestOption(btn.dataset.rest === 'heal' ? 'heal' : 'leave');
-      });
-    });
-  }
-
-  showBoon(boon) {
-    this.openModal(
-      boon.name,
-      `<p style="color:${boon.color}">${boon.desc}</p>`,
-      `<div class="btn-row"><button class="btn btn-accent" data-act="ok">ACCEPT</button></div>`
-    );
-    this.modalActions.querySelector('button[data-act="ok"]').addEventListener('click', () => {
-      this.closeModal();
-      this.cb.onBoonAccepted(boon.id);
-    });
-  }
-
-  showMinigameIntro() {
-    this.openModal(
-      'PRECISION DRILL',
-      `<p>Calibrate your timing. Land 3 of 5 in the green band. Rewards scale with accuracy.</p>`,
-      `<div class="btn-row"><button class="btn btn-accent" data-act="start">START</button></div>`
-    );
-    this.modalActions.querySelector('button[data-act="start"]').addEventListener('click', () => {
-      this.closeModal();
-      this.cb.onMinigameStart();
-    });
-  }
-
-  showMinigameResult(result, rewards = {}) {
-    const title = result.perfect ? 'PERFECT DRILL' : result.success ? 'DRILL PASSED' : 'DRILL FAILED';
-    const color = result.success ? '#5fd3a8' : '#e0655c';
-
-    let body = `<p style="color:${color};font-weight:700;font-size:16px;margin-bottom:6px;">${title}</p>`;
-    body += `<p style="margin-bottom:12px;">Accuracy: <strong>${result.hits}/5 Hits</strong> • <strong>${result.perfects} Perfects</strong></p>`;
-
-    if (rewards) {
-      const parts = [];
-      if (rewards.gold) parts.push(`+${rewards.gold} Gold`);
-      if (rewards.tech) parts.push(`+${rewards.tech} TP`);
-      if (rewards.relic) parts.push(`<span style="color:var(--accent)">+ Collectible: ${rewards.relic.name}</span>`);
-      if (parts.length) {
-        body += `<div style="padding:10px 14px;background:var(--bg-panel-2);border:1px solid var(--border);border-radius:4px;text-align:left;">
-          <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">REWARDS EARNED</div>
-          <p class="reward-line" style="margin:0;font-weight:600;font-size:13px;">${parts.join(' • ')}</p>
-        </div>`;
-      }
-    }
-
-    this.openModal('DRILL REPORT', body,
-      `<div class="btn-row"><button class="btn btn-accent" data-act="ok">CLAIM REWARDS</button></div>`
-    );
-    this.modalActions.querySelector('button[data-act="ok"]').addEventListener('click', () => {
-      this.closeModal();
-      this.cb.onMinigameDone();
-    });
-  }
-
-  showRunResult(run, quests, meta) {
-    this._setVisible('result');
-    document.getElementById('result-title').textContent =
-      run.runResult === 'victory' ? 'OPERATION COMPLETE' : 'OPERATION FAILED';
-    document.getElementById('result-title').style.color =
-      run.runResult === 'victory' ? '#5fd3a8' : '#e0655c';
-    document.getElementById('result-sub').textContent =
-      `Floors reached: ${run.floor + 1}/${CONFIG.map.floors} • Combats won: ${run.combatsWon}`;
-
-    const questList = document.getElementById('result-quests');
-    questList.innerHTML = '';
-    for (const q of quests) {
-      const item = document.createElement('div');
-      item.className = `quest-item ${q.completed ? 'done' : ''}`;
-      item.innerHTML = `
-        <span>${q.completed ? '✓' : '•'} ${q.name}</span>
-        <span class="quest-reward">${q.completed ? `+${q.reward} TP` : '—'}</span>
-      `;
-      questList.appendChild(item);
-    }
-    const tp = meta?.techPoints ?? (this.cb.getTechPoints ? this.cb.getTechPoints() : 0);
-    document.getElementById('result-tp').textContent = `Total Tech Points: ${tp}`;
-  }
-
-  showBattleHud(run, nodeType) {
-    document.getElementById('battle-floor').textContent = `FLOOR ${run.floor + 1}`;
-    document.getElementById('battle-node').textContent =
-      nodeType === 'boss' ? 'BOSS' : nodeType === 'miniboss' ? 'MINI-BOSS' : nodeType === 'elite' ? 'ELITE' : 'COMBAT';
-    document.getElementById('battle-gold').textContent = `${run.gold}G`;
-
-    const mapView = document.getElementById('map-view');
-    const battleView = document.getElementById('battle-view');
-    if (mapView) mapView.classList.add('hidden');
-    if (battleView) battleView.classList.remove('hidden');
-
-    this._setVisible('battleHud', 'run');
-  }
-
-  showMinigameView() {
-    const mapView = document.getElementById('map-view');
-    const battleView = document.getElementById('battle-view');
-    if (mapView) mapView.classList.add('hidden');
-    if (battleView) battleView.classList.remove('hidden');
-
-    this._setVisible('run');
-  }
-
-  clearBattleHud() {
-    const mapView = document.getElementById('map-view');
-    const battleView = document.getElementById('battle-view');
-    if (mapView) mapView.classList.remove('hidden');
-    if (battleView) battleView.classList.add('hidden');
-
-    this._setVisible('run');
-  }
-
-  // ---------- helpers ----------
-
-  _setVisible(...names) {
-    for (const key of Object.keys(this.screens)) {
-      const el = this.screens[key];
-      if (el) {
-        el.classList.toggle('hidden', !names.includes(key));
-        if (names.includes(key)) el.classList.add('active');
-        else el.classList.remove('active');
+  _setVisible(screenKey) {
+    for (const k in this.screens) {
+      if (this.screens[k]) {
+        this.screens[k].classList.toggle('hidden', k !== screenKey);
       }
     }
   }
 
   _tp() {
-    // Tech points are read from the save via a callback.
-    return this.cb.getTechPoints ? this.cb.getTechPoints() : 0;
+    return saveSystem.data.techPoints;
   }
 }

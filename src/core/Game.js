@@ -1,9 +1,8 @@
 // ============================================================
 // Game — orchestrates the full game loop: turn flow, physics
-// stepping, collisions, damage, AI, input, and rendering.
-// Supports multi-enemy battles (each enemy takes its own turn)
-// and battle configurations injected by the roguelike App
-// (player HP/ATK/DEF, enemy archetypes/tiers, relics, quest hooks).
+// stepping, collisions, damage, AI, input, sound effects, and rendering.
+// Supports multi-enemy battles, arena obstacles, platforms, screen shake,
+// and battle configurations injected by the roguelike App.
 // ============================================================
 
 import { CONFIG } from '../config.js';
@@ -15,6 +14,7 @@ import { TurnSystem, TurnPhase } from '../systems/TurnSystem.js';
 import { SlingshotInput } from '../input/SlingshotInput.js';
 import { EnemyAI } from '../ai/EnemyAI.js';
 import { Renderer } from '../rendering/Renderer.js';
+import { soundEngine } from '../utils/SoundEngine.js';
 
 const W = CONFIG.world;
 const B = CONFIG.ball;
@@ -29,6 +29,7 @@ const DEFAULT_BATTLE = {
   ],
   relics: [],
   nodeType: 'combat',
+  floor: 1,
 };
 
 export class Game {
@@ -45,6 +46,8 @@ export class Game {
     this.enemies = [];
     this.particles = [];
     this.barriers = [];
+    this.platforms = [];
+    this.obstacles = [];
     this.winner = null;
     this.battleConfig = null;
     this.battleStats = this._freshBattleStats();
@@ -69,7 +72,6 @@ export class Game {
   }
 
   _freshAbilities() {
-    // Relic "Overcharge Cell" reduces ability cooldowns by 1 turn
     const reduce = this.relics?.includes('rel_overcharge') ? 1 : 0;
     return {
       overdrive: { ready: true, cooldownLeft: 0, baseCooldown: Math.max(1, CONFIG.abilities.overdrive.cooldown - reduce), name: CONFIG.abilities.overdrive.name },
@@ -77,16 +79,13 @@ export class Game {
     };
   }
 
-  /**
-   * Configure and begin a battle.
-   * @param {Object} opts - partial battle config (see DEFAULT_BATTLE)
-   */
   startBattle(opts = {}) {
     const merged = {
       player: { ...DEFAULT_BATTLE.player, ...(opts.player || {}) },
       enemies: (opts.enemies && opts.enemies.length ? opts.enemies : DEFAULT_BATTLE.enemies),
       relics: opts.relics || [],
       nodeType: opts.nodeType || 'combat',
+      floor: opts.floor || 1,
     };
     this.reset(merged);
     this.running = true;
@@ -112,7 +111,6 @@ export class Game {
       this.player.hp = Math.max(1, Math.min(this.player.maxHp, config.player.hp));
     }
 
-    // Spawn all enemies spread across the right side
     this.enemies = (config.enemies || []).map((e, i) => {
       const xPct = e.xPct ?? 0.7 + i * 0.12;
       return new Ball({
@@ -136,7 +134,12 @@ export class Game {
     this.forcefieldActive = !!this.techStats.hasForcefield;
     this.medkitUsed = false;
 
-    // Aggregate enemy stats for damage resolution
+    // Load arena platforms & destructible obstacles per floor
+    const floorKey = Math.min(5, Math.max(1, config.floor || 1));
+    const layout = CONFIG.arenaLayouts?.[floorKey] || { platforms: [], obstacles: [] };
+    this.platforms = JSON.parse(JSON.stringify(layout.platforms || []));
+    this.obstacles = JSON.parse(JSON.stringify(layout.obstacles || []));
+
     this.collisionSystem.setStats({
       playerAtk: config.player.atk ?? 1,
       playerDef: config.player.def ?? 0,
@@ -156,7 +159,6 @@ export class Game {
     this.slingshotInput.setAnchor(this.player.x, this.player.y);
   }
 
-  /** The enemy whose turn it currently is. */
   get activeEnemy() {
     return this.enemies[this.turnSystem.enemyIndex] || null;
   }
@@ -165,11 +167,6 @@ export class Game {
     return this.enemies.every((e) => e.hp <= 0);
   }
 
-  /**
-   * Use a battle ability.
-   * @param {string} id - 'overdrive' | 'barrier'
-   * @returns {boolean} true if the ability was used or placement mode started
-   */
   useAbility(id) {
     if (!this.running) return false;
     const ab = this.abilities[id];
@@ -179,6 +176,7 @@ export class Game {
       ab.ready = false;
       ab.cooldownLeft = ab.baseCooldown;
       this.battleStats.overdriveActive = true;
+      soundEngine.playAbility('overdrive');
       this.events.emit('ability-used', { id, name: CONFIG.abilities.overdrive.name });
       return true;
     }
@@ -187,7 +185,6 @@ export class Game {
       const activeCount = this.barriers.filter((b) => b.active).length;
       if (activeCount >= CONFIG.abilities.barrier.maxActive) return false;
 
-      // Start placement mode on slingshotInput
       this.slingshotInput.startBarrierPlacement();
       return true;
     }
@@ -195,9 +192,6 @@ export class Game {
     return false;
   }
 
-  /**
-   * Deploy a barrier at specific canvas coordinates.
-   */
   deployBarrierAt(x, y) {
     const ab = this.abilities.barrier;
     if (!ab || !ab.ready) return false;
@@ -219,6 +213,7 @@ export class Game {
     });
     ab.ready = false;
     ab.cooldownLeft = ab.baseCooldown;
+    soundEngine.playAbility('barrier');
     this.events.emit('ability-used', { id: 'barrier', name: CONFIG.abilities.barrier.name });
     return true;
   }
@@ -227,7 +222,6 @@ export class Game {
     this.useAbility('barrier');
   }
 
-  /** Tick ability cooldowns each turn. */
   _tickAbilities() {
     for (const key of Object.keys(this.abilities)) {
       const ab = this.abilities[key];
@@ -258,7 +252,6 @@ export class Game {
     const enemy = this.enemies[index];
     if (!enemy || enemy.hp <= 0) return;
 
-    // --- Tactical Enemy Abilities ---
     if (enemy.archetype === 'striker') {
       enemy.turnCount = (enemy.turnCount || 0) + 1;
       if (enemy.turnCount % 2 === 0) {
@@ -283,6 +276,7 @@ export class Game {
           active: true,
           hp: CONFIG.damage.barrierHp,
         });
+        soundEngine.playAbility('barrier');
         this.events.emit('enemy-ability', {
           enemy,
           ability: 'Fortify Shield',
@@ -293,8 +287,14 @@ export class Game {
       this._triggerShockwave(enemy);
     }
 
+    let aiDifficulty = enemy.aiDifficulty ?? 0.5;
+    // Cryo Coil: frozen enemies take turns with reduced speed/precision
+    if (enemy.isFrozen) {
+      aiDifficulty = Math.max(0.2, aiDifficulty - 0.3);
+    }
+
     this.enemyAI.configure({
-      difficulty: enemy.aiDifficulty ?? 0.5,
+      difficulty: aiDifficulty,
       thinkDelay: enemy.thinkDelay ?? CONFIG.ai.thinkDelay,
     });
     this.enemyAI.startTurn(enemy, this.player, this.barriers);
@@ -317,6 +317,8 @@ export class Game {
         if (b.hp <= 0) b.active = false;
       }
     }
+    this.renderer.addScreenShake(14);
+    soundEngine.playImpact(1.8);
     this.particles.push({
       x: enemy.x,
       y: enemy.y,
@@ -345,6 +347,8 @@ export class Game {
       this.player.vx = velocity.x;
       this.player.vy = velocity.y;
       this.slingshotInput.setActive(false);
+      const speed = Math.hypot(velocity.x, velocity.y);
+      soundEngine.playLaunch(speed / 900);
       this.turnSystem.launch();
     });
 
@@ -354,14 +358,20 @@ export class Game {
       const enemy = this.enemies[enemyIndex ?? this.turnSystem.enemyIndex];
       if (!enemy || enemy.hp <= 0) return;
 
-      // Overcharged striker speed boost
       if (enemy.isOvercharged) {
         velocity.x *= 1.35;
         velocity.y *= 1.35;
       }
+      if (enemy.isFrozen) {
+        velocity.x *= 0.65;
+        velocity.y *= 0.65;
+        enemy.isFrozen = false; // consume freeze
+      }
 
       enemy.vx = velocity.x;
       enemy.vy = velocity.y;
+      const speed = Math.hypot(velocity.x, velocity.y);
+      soundEngine.playLaunch(speed / 900);
       this.turnSystem.launch();
     });
 
@@ -373,20 +383,16 @@ export class Game {
         this.battleStats.turns += 1;
         this._tickAbilities();
 
-        // Forcefield Barrier tech: regenerate forcefield every 4 turns
         if (this.techStats.hasForcefield && this.battleStats.turns % 4 === 0) {
           this.forcefieldActive = true;
         }
 
-        // Auto-Medic relic: restore 6 HP at end of player's turn
         if (this.relics.includes('rel_medic')) {
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + 6);
         }
 
-        // Reset turn-scoped Fortified Matrix DEF bonus
         this.collisionSystem.stats.playerDef = this.battleConfig?.player?.def || 0;
 
-        // Player turn ended -> start Enemy 0 (first living enemy)
         const firstIdx = this.enemies.findIndex((e) => e.hp > 0);
         if (firstIdx === -1) {
           this._startPlayerTurn();
@@ -394,7 +400,6 @@ export class Game {
           this._startEnemyTurnAtIndex(firstIdx);
         }
       } else {
-        // Enemy turn ended -> check if more living enemies need to take a turn
         const currentIdx = this.turnSystem.enemyIndex;
         let nextIdx = -1;
         for (let i = currentIdx + 1; i < this.enemies.length; i++) {
@@ -406,7 +411,6 @@ export class Game {
         if (nextIdx !== -1) {
           this._startEnemyTurnAtIndex(nextIdx);
         } else {
-          // All enemies have completed their turn -> back to Player!
           this._startPlayerTurn();
         }
       }
@@ -414,8 +418,16 @@ export class Game {
 
     this.events.on('damage', ({ attacker, victim, damage, killed, isThorn }) => {
       this._spawnHitParticles(victim.x, victim.y);
+      const forceScale = Math.min(2.0, damage / 20);
+      soundEngine.playImpact(forceScale);
+      if (damage >= 15) {
+        this.renderer.addScreenShake(Math.min(16, damage * 0.5));
+      }
+
       if (killed) {
+        soundEngine.playDefeat();
         this._spawnDefeatParticles(victim.x, victim.y, victim.color);
+        this.renderer.addScreenShake(12);
       }
 
       if (attacker.team === 'player') {
@@ -425,25 +437,22 @@ export class Game {
         this.events.emit('enemy-dealt-damage', { attacker, damage });
       }
 
-      // Emergency Medkit tech: restore 25 HP once per combat when dropping below 25% HP
       if (victim.team === 'player' && this.techStats.hasEmergencyMedkit && !this.medkitUsed && victim.hp > 0 && victim.hp <= victim.maxHp * 0.25) {
         this.medkitUsed = true;
         victim.hp = Math.min(victim.maxHp, victim.hp + 25);
+        soundEngine.playAbility('barrier');
         this.events.emit('emergency-medkit-heal', { hp: victim.hp });
       }
 
-      // Fortified Matrix tech: +3 DEF for turn on heavy hit (>20 DMG)
       if (victim.team === 'player' && this.techStats.hasFortifiedMatrix && damage >= 20) {
         this.collisionSystem.stats.playerDef = (this.battleConfig?.player?.def || 0) + 3;
       }
 
-      // Wall bounce quest: enemy hit after a wall bounce
       if (attacker.team === 'player' && this.battleStats.wallBounced) {
         this.events.emit('wall-bounce-hit', { damage });
         this.battleStats.wallBounced = false;
       }
 
-      // Thorns relic: reflect 25% of damage taken back to the attacker
       if (victim.team === 'player' && attacker.team === 'enemy' && this.relics.includes('rel_thorns') && !isThorn) {
         const reflected = Math.max(1, Math.round(damage * 0.25));
         attacker.hp = Math.max(0, attacker.hp - reflected);
@@ -458,9 +467,11 @@ export class Game {
       }
     });
 
-    // Wall bounces tracked for quest support
     this.events.on('wall-bounce', ({ ball }) => {
-      if (ball.team === 'player') this.battleStats.wallBounced = true;
+      soundEngine.playWallBounce();
+      if (ball.team === 'player') {
+        this.battleStats.wallBounced = true;
+      }
     });
   }
 
@@ -475,6 +486,8 @@ export class Game {
 
     if (this.allEnemiesDead) {
       this.winner = 'player';
+      this.events.emit('player-turn-start');
+      soundEngine.playVictory();
       this._endBattle();
     }
   }
@@ -541,9 +554,10 @@ export class Game {
   _stepPhysics(dt) {
     const livingEnemies = this.enemies.filter((e) => e.hp > 0);
     const balls = [this.player, ...livingEnemies];
-    const events = stepWorld(balls, dt, this.barriers);
+    const events = stepWorld(balls, dt, this.barriers, this.platforms, this.obstacles);
     for (const evt of events) {
       if (evt.type === 'wall') {
+        soundEngine.playWallBounce();
         this.events.emit('wall-bounce', { ball: evt.ball });
       }
     }
@@ -602,6 +616,8 @@ export class Game {
       turnSystem: this.turnSystem,
       particles: this.particles,
       barriers: this.barriers,
+      platforms: this.platforms,
+      obstacles: this.obstacles,
       abilities: this.abilities,
       winner: this.winner,
       battleSummary: {
