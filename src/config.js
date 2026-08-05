@@ -98,6 +98,13 @@ export const CONFIG = {
       abilityDesc: 'Rallies all hostiles on turn start granting +20% ATK and +3 DEF',
       color: '#ffb300', darkColor: '#ff8f00',
     },
+    corroder: {
+      name: 'ACID DRONE',
+      hpMult: 1.2, atkMult: 1.05, defBonus: 1, aiShift: 0.08,
+      ability: 'corrode',
+      abilityDesc: 'Emits a corrosive acid splash reducing player DEF by -4 for the battle',
+      color: '#aeea00', darkColor: '#33691e',
+    },
   },
 
   // --- Enemy Tiers (Initial Base Enemy Stats per Floor) ---
@@ -124,12 +131,12 @@ export const CONFIG = {
     7: { hpPct: 9, atkPct: 9, defPct: 9, minusHeal: 5, plusCost: 0, minusGold: 0 },
     8: { hpPct: 12, atkPct: 12, defPct: 12, minusHeal: 10, plusCost: 2, minusGold: 0 },
     9: { hpPct: 15, atkPct: 15, defPct: 15, minusHeal: 15, plusCost: 4, minusGold: 0 },
-    10: { hpPct: 18, atkPct: 18, defPct: 18, minusHeal: 20, plusCost: 6, minusGold: 0 },
-    11: { hpPct: 21, atkPct: 21, defPct: 21, minusHeal: 25, plusCost: 8, minusGold: 0 },
-    12: { hpPct: 24, atkPct: 24, defPct: 24, minusHeal: 30, plusCost: 10, minusGold: 5 },
-    13: { hpPct: 27, atkPct: 27, defPct: 27, minusHeal: 35, plusCost: 13, minusGold: 10 },
-    14: { hpPct: 30, atkPct: 30, defPct: 30, minusHeal: 40, plusCost: 15, minusGold: 15 },
-    15: { hpPct: 35, atkPct: 35, defPct: 35, minusHeal: 50, plusCost: 20, minusGold: 20 },
+    10: { hpPct: 18, atkPct: 18, defPct: 18, minusHeal: 20, plusCost: 6, minusGold: 0, plusDmgTaken: 2 },
+    11: { hpPct: 21, atkPct: 21, defPct: 21, minusHeal: 25, plusCost: 8, minusGold: 0, plusDmgTaken: 3.5 },
+    12: { hpPct: 24, atkPct: 24, defPct: 24, minusHeal: 30, plusCost: 10, minusGold: 5, plusDmgTaken: 5 },
+    13: { hpPct: 27, atkPct: 27, defPct: 27, minusHeal: 35, plusCost: 13, minusGold: 10, plusDmgTaken: 6.5 },
+    14: { hpPct: 30, atkPct: 30, defPct: 30, minusHeal: 40, plusCost: 15, minusGold: 15, plusDmgTaken: 8 },
+    15: { hpPct: 35, atkPct: 35, defPct: 35, minusHeal: 50, plusCost: 20, minusGold: 20, plusDmgTaken: 10 },
   },
   // Multi-enemy waves per node type + floor (1 to 3 enemies per stage)
   enemyCounts: {
@@ -142,12 +149,12 @@ export const CONFIG = {
   archetypeWeights: {
     1: { standard: 0.6, tank: 0.2, striker: 0.2 },
     2: { standard: 0.3, tank: 0.2, striker: 0.2, vampire: 0.15, pyromancer: 0.15 },
-    3: { standard: 0.2, tank: 0.2, striker: 0.2, disruptor: 0.2, tactician: 0.2 },
-    4: { standard: 0.1, tank: 0.15, striker: 0.15, vampire: 0.15, pyromancer: 0.15, disruptor: 0.15, tactician: 0.15 },
-    5: { standard: 0.1, tank: 0.15, striker: 0.15, vampire: 0.15, pyromancer: 0.15, disruptor: 0.15, tactician: 0.15 },
-    elite: { tank: 0.2, striker: 0.2, vampire: 0.2, pyromancer: 0.2, disruptor: 0.1, tactician: 0.1 },
-    miniboss: { tank: 0.2, striker: 0.2, vampire: 0.2, pyromancer: 0.2, disruptor: 0.1, tactician: 0.1 },
-    boss: { tank: 0.2, striker: 0.2, disruptor: 0.2, tactician: 0.2, pyromancer: 0.2 },
+    3: { standard: 0.2, tank: 0.15, striker: 0.15, disruptor: 0.15, tactician: 0.15, corroder: 0.2 },
+    4: { standard: 0.1, tank: 0.15, striker: 0.15, vampire: 0.15, pyromancer: 0.15, disruptor: 0.1, tactician: 0.1, corroder: 0.1 },
+    5: { standard: 0.1, tank: 0.15, striker: 0.15, vampire: 0.15, pyromancer: 0.15, disruptor: 0.1, tactician: 0.1, corroder: 0.1 },
+    elite: { tank: 0.15, striker: 0.15, vampire: 0.15, pyromancer: 0.15, disruptor: 0.1, tactician: 0.15, corroder: 0.15 },
+    miniboss: { tank: 0.15, striker: 0.15, vampire: 0.15, pyromancer: 0.15, disruptor: 0.1, tactician: 0.15, corroder: 0.15 },
+    boss: { tank: 0.2, striker: 0.2, disruptor: 0.2, tactician: 0.2, pyromancer: 0.1, corroder: 0.1 },
   },
 
   // --- Enemy AI ---

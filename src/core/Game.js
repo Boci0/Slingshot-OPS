@@ -173,6 +173,7 @@ export class Game {
       playerDef: config.player.def ?? 0,
       playerTotalDef: config.player.totalDef ?? config.player.def ?? 0,
       playerDamageReductionPct: config.player.damageReductionPct ?? 0,
+      riskPlusDmgTaken: config.riskPlusDmgTaken || 0,
       relics: this.relics,
       battleStats: this.battleStats,
       techStats: this.techStats,
@@ -319,15 +320,61 @@ export class Game {
         });
       }
     } else if (enemy.archetype === 'disruptor') {
-      const pullForce = (CONFIG.world.width * 0.5 - this.player.x) > 0 ? 160 : -160;
-      this.player.vx += pullForce;
-      this.renderer.addScreenShake(8);
-      soundEngine.playAbility('overdrive');
-      this.events.emit('enemy-ability', {
-        enemy,
-        ability: 'Singularity Grav-Pulse',
-        desc: 'Graviton Weaver distorts player trajectory!',
-      });
+      const dx = enemy.x - this.player.x;
+      const dy = enemy.y - this.player.y;
+      const dist = Math.hypot(dx, dy) || 1;
+
+      // Line segment raycast check against active barriers, obstacles, and platforms
+      let isBlocked = false;
+      const lineIntersectsRect = (x1, y1, x2, y2, rx, ry, rw, rh) => {
+        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+        if (maxX < rx || minX > rx + rw || maxY < ry || minY > ry + rh) return false;
+        return true;
+      };
+
+      for (const b of this.barriers) {
+        if (b.active && lineIntersectsRect(this.player.x, this.player.y, enemy.x, enemy.y, b.x, b.y, b.w, b.h)) {
+          isBlocked = true;
+          break;
+        }
+      }
+      if (!isBlocked) {
+        for (const obs of this.obstacles) {
+          if (obs.active && lineIntersectsRect(this.player.x, this.player.y, enemy.x, enemy.y, obs.x, obs.y, obs.w, obs.h)) {
+            isBlocked = true;
+            break;
+          }
+        }
+      }
+      if (!isBlocked) {
+        for (const plat of this.platforms) {
+          if (lineIntersectsRect(this.player.x, this.player.y, enemy.x, enemy.y, plat.x, plat.y, plat.w, plat.h)) {
+            isBlocked = true;
+            break;
+          }
+        }
+      }
+
+      if (isBlocked) {
+        soundEngine.playAbility('barrier');
+        this.events.emit('enemy-ability', {
+          enemy,
+          ability: 'Graviton Tether (Blocked)',
+          desc: 'Graviton pull was blocked by an intervening barrier/structure!',
+        });
+      } else {
+        const pullSpeed = 420;
+        this.player.vx = (dx / dist) * pullSpeed;
+        this.player.vy = (dy / dist) * pullSpeed - 50;
+        this.renderer.addScreenShake(12);
+        soundEngine.playAbility('overdrive');
+        this.events.emit('enemy-ability', {
+          enemy,
+          ability: 'Graviton Tether Pull',
+          desc: 'Graviton Weaver pulled ally directly straight into impact trajectory!',
+        });
+      }
     } else if (enemy.archetype === 'tactician') {
       let ralliedAny = false;
       for (const ally of this.enemies) {
@@ -344,6 +391,19 @@ export class Game {
           enemy,
           ability: 'War Command',
           desc: 'Commander rallies hostiles with +20% ATK and +3 DEF!',
+        });
+      }
+    } else if (enemy.archetype === 'corroder') {
+      const curDef = this.collisionSystem.stats.playerTotalDef || 0;
+      if (curDef > 0) {
+        const newDef = Math.max(0, curDef - 4);
+        this.collisionSystem.stats.playerTotalDef = newDef;
+        soundEngine.playAbility('overdrive');
+        this.renderer.addScreenShake(8);
+        this.events.emit('enemy-ability', {
+          enemy,
+          ability: 'Corrosive Acid Splash',
+          desc: `Acid Drone sprayed corrosive acid! Player DEF reduced by -4 for this battle (Now ${newDef} DEF)!`,
         });
       }
     } else if (enemy.archetype === 'boss' || enemy.displayName === 'SECTOR COMMANDER') {

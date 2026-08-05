@@ -505,6 +505,7 @@ function startCombat(node) {
     ballType: run.ballType || 'vanguard',
     techStats: techTree.getPermanentStats(),
     riskLevel: riskLevel,
+    riskPlusDmgTaken: riskData.plusDmgTaken || 0,
     floor: run.floor + 1,
     maxPowerMult,
   };

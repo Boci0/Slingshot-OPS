@@ -244,6 +244,10 @@ export class UIManager {
     const defPct = Math.round((run.defPctBonus || 0) * 100);
     const totalDef = run.totalDef;
     document.getElementById('run-def').textContent = defPct > 0 ? `${totalDef} (+${defPct}%)` : `${totalDef}`;
+
+    const dmgRed = Math.round((run.damageReductionPct || 0) * 100);
+    const dmgRedEl = document.getElementById('run-dmg-red');
+    if (dmgRedEl) dmgRedEl.textContent = dmgRed > 0 ? `-${dmgRed}%` : `0%`;
     document.getElementById('run-floor').textContent = run.floorProgress;
 
     // Boon chips

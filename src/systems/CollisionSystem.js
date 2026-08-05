@@ -146,6 +146,10 @@ export class CollisionSystem {
 
     let finalDamage = Math.max(1, Math.round(damageAfterDef * (1 - victimDmgReductionPct)));
 
+    if (victim.team === 'player' && this.stats.riskPlusDmgTaken > 0) {
+      finalDamage = Math.max(1, Math.round(finalDamage * (1 + this.stats.riskPlusDmgTaken / 100)));
+    }
+
     if (attacker.team === 'player' && this.stats.relics?.includes('rel_syndicate_blade') && victim.archetype !== 'boss' && victim.displayName !== 'SECTOR COMMANDER') {
       const remainingHp = victim.hp - finalDamage;
       if (remainingHp > 0 && remainingHp <= victim.maxHp * 0.15) {
