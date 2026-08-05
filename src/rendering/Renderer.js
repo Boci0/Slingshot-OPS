@@ -227,6 +227,40 @@ export class Renderer {
       ctx.restore();
     }
 
+    if (ball.burnTicks > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#ff5722';
+      ctx.shadowColor = '#ff9800';
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, r + 6, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = 'bold 11px Consolas, monospace';
+      ctx.fillStyle = '#ff7043';
+      ctx.textAlign = 'center';
+      ctx.fillText(`BURN (${ball.burnTicks}T)`, ball.x, ball.y + r + 14);
+      ctx.restore();
+    }
+
+    if (ball.isFrozen) {
+      ctx.save();
+      ctx.strokeStyle = '#4fc3f7';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, r + 6, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = 'bold 11px Consolas, monospace';
+      ctx.fillStyle = '#4fc3f7';
+      ctx.textAlign = 'center';
+      ctx.fillText('FROZEN', ball.x, ball.y + r + 14);
+      ctx.restore();
+    }
+
     if (ball.isOvercharged) {
       ctx.strokeStyle = '#ff8a65';
       ctx.lineWidth = 3;

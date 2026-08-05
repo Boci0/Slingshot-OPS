@@ -660,7 +660,7 @@ export class UIManager {
     if (rewards) {
       const parts = [];
       if (rewards.gold) parts.push(`+${rewards.gold} Gold`);
-      if (rewards.heal) parts.push(`<span style="color:#5fd3a8">+${rewards.heal} HP Healed</span>`);
+      if (rewards.healText || rewards.heal) parts.push(`<span style="color:#5fd3a8">${rewards.healText || ('+' + rewards.heal + ' HP Healed')}</span>`);
       if (rewards.relics && rewards.relics.length) {
         for (const r of rewards.relics) {
           parts.push(`<span style="color:var(--accent)">+ Collectible: ${r.name}</span>`);

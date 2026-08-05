@@ -108,9 +108,10 @@ export class CollisionSystem {
         bs.echoUsed = true;
       }
 
-      // Elemental Relic: Thermal Engine (+5 Burn DOT)
+      // Elemental Relic: Thermal Engine (Ignites target with 3 turns of Thermal Burn DOT)
       if (rels.includes('rel_pyro')) {
-        baseDamage += 5;
+        victim.burnTicks = 3;
+        victim.burnDmg = 6;
       }
 
       // Elemental Relic: Cryo Coil (Freezes target, slows next turn launch)

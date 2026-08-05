@@ -850,12 +850,12 @@ function calculateAndApplyMinigameRewards(result) {
   const isAllPerfect = hits === totalAttempts && perfects === totalAttempts;
 
   let gold = 0;
-  let heal = 0;
+  let healText = '';
   const relicsGained = [];
 
   if (isAllPerfect) {
     gold = run.gainGold(40);
-    heal = run.maxHp - run.hp;
+    healText = 'Full HP Recovery';
     run.hp = run.maxHp;
 
     const r1 = rewardRandomCollectible('FLAWLESS DRILL 1');
@@ -867,7 +867,7 @@ function calculateAndApplyMinigameRewards(result) {
   } else if (perfects >= 3) {
     gold = run.gainGold(25);
     const effectiveHeal = Math.round(50 * saveSystem.getHealingMultiplier());
-    heal = effectiveHeal;
+    healText = `+${effectiveHeal} HP Healed`;
     run.healFlat(50);
 
     const r1 = rewardRandomCollectible('PRECISION DRILL');
@@ -887,7 +887,7 @@ function calculateAndApplyMinigameRewards(result) {
 
   return {
     gold,
-    heal,
+    healText,
     relics: relicsGained,
     hits,
     perfects,

@@ -319,6 +319,19 @@ export class Game {
       this._triggerShockwave(enemy);
     }
 
+    if (enemy.burnTicks > 0) {
+      const burnDmg = enemy.burnDmg || 6;
+      enemy.hp = Math.max(0, enemy.hp - burnDmg);
+      enemy.burnTicks -= 1;
+      this._spawnHitParticles(enemy.x, enemy.y);
+      this.events.emit('player-dealt-damage', { victim: enemy, damage: burnDmg });
+      if (enemy.hp <= 0) {
+        this._spawnDefeatParticles(enemy.x, enemy.y, enemy.color);
+        this._checkBattleEnd(enemy);
+        if (enemy.hp <= 0) return;
+      }
+    }
+
     let aiDifficulty = enemy.aiDifficulty ?? 0.5;
     if (enemy.isFrozen) {
       aiDifficulty = Math.max(0.2, aiDifficulty - 0.3);
