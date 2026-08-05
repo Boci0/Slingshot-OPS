@@ -148,21 +148,18 @@ export class RogueMapRenderer {
   }
 
   _drawBackground(ctx) {
-    const margin = 3000;
+    const margin = 8000;
     const minX = -margin;
     const maxX = M.floorWidth + margin;
     const minY = -margin;
     const maxY = M.floorHeight + margin;
 
-    const grad = ctx.createLinearGradient(minX, minY, maxX, maxY);
-    grad.addColorStop(0, '#090d14');
-    grad.addColorStop(0.5, '#111622');
-    grad.addColorStop(1, '#090d14');
-    ctx.fillStyle = grad;
+    // Solid dark tactical navy fill
+    ctx.fillStyle = '#0e131f';
     ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
 
-    // Atmospheric grid lines extending across infinite zoomed map space
-    ctx.strokeStyle = 'rgba(122, 162, 255, 0.07)';
+    // Uniform atmospheric grid lines extending seamlessly across all zoom levels
+    ctx.strokeStyle = 'rgba(122, 162, 255, 0.08)';
     ctx.lineWidth = 1;
 
     const step = 50;
