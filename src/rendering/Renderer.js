@@ -372,7 +372,7 @@ export class Renderer {
     }
 
     enemies.forEach((enemy, i) => {
-      const ey = y + i * 52;
+      const ey = y + i * 58;
       this._drawHpBar(ctx, enemy, W.width - 35 - barWidth, ey, barWidth, barHeight, C.hpBarEnemyFg);
       this._drawStatusTags(ctx, enemy, W.width - 35 - barWidth, ey + barHeight + 4, barWidth, true);
 
@@ -404,7 +404,27 @@ export class Renderer {
     if (ball.corrodeTicks > 0)
       tags.push({ label: `CORRODE ${ball.corrodeTicks}T`, color: '#69f0ae', desc: `Corroded! Loses ${ball.corrodeDefDrain || 1} DEF at the start of each turn. ${ball.corrodeTicks} turn(s) remaining.` });
     if (ball.isRallied)
-      tags.push({ label: 'RALLIED', color: '#ffcc02', desc: 'Rallied by a Tactician: +20% ATK and +3 DEF.' });
+      tags.push({ label: 'RALLIED', color: '#ffcc02', desc: 'Rallied by Field Commander: +20% ATK and +3 DEF.' });
+    if (ball.isOvercharged)
+      tags.push({ label: 'OVERCHARGE', color: '#ff8a65', desc: 'Striker Overcharged! Next shot launch velocity increased by +35%.' });
+    if (ball.hasFortified)
+      tags.push({ label: 'FORTIFIED', color: '#7aa2ff', desc: 'Fortified Shield! Defense increased by +3.' });
+
+    if (ball.team === 'player') {
+      const bs = this.worldRef?.battleStats;
+      const odStacks = bs?.overdriveStacks || (bs?.overdriveActive ? 1 : 0);
+      if (odStacks > 0) {
+        const multLabel = odStacks > 1 ? ` x${odStacks}` : '';
+        tags.push({ label: `OVERDRIVE${multLabel}`, color: '#e8a94c', desc: `Overdrive Active! Next shot deals increased damage. (${odStacks} stack(s))` });
+      }
+      if (this.worldRef?.forcefieldActive) {
+        tags.push({ label: 'FORCEFIELD', color: '#00e5ff', desc: 'Forcefield Barrier Active! Blocks 1 incoming attack.' });
+      }
+      const shieldHp = this.worldRef?.run?.shieldHp || 0;
+      if (shieldHp > 0) {
+        tags.push({ label: `SHIELD ${Math.ceil(shieldHp)}`, color: '#4fc3f7', desc: `Overflow Shielding! Absorbs up to ${Math.ceil(shieldHp)} incoming damage.` });
+      }
+    }
 
     if (tags.length === 0) return;
 
@@ -413,50 +433,68 @@ export class Renderer {
     const gap = 4;
     ctx.font = 'bold 9px Consolas, monospace';
 
-    let cursorX = alignRight ? (barX + barWidth) : barX;
+    // Group tags into lines to fit barWidth
+    const lines = [];
+    let currentLine = [];
+    let currentLineW = 0;
 
-    // Measure widths first
-    const widths = tags.map((t) => ctx.measureText(t.label).width + padX * 2);
-    const totalW = widths.reduce((a, w) => a + w + gap, 0) - gap;
+    tags.forEach((tag) => {
+      const tw = ctx.measureText(tag.label).width + padX * 2;
+      tag._width = tw;
 
-    if (alignRight) cursorX = barX + barWidth - totalW;
+      if (currentLine.length > 0 && currentLineW + gap + tw > barWidth) {
+        lines.push({ items: currentLine, width: currentLineW });
+        currentLine = [tag];
+        currentLineW = tw;
+      } else {
+        currentLine.push(tag);
+        currentLineW += (currentLine.length === 1 ? 0 : gap) + tw;
+      }
+    });
+    if (currentLine.length > 0) {
+      lines.push({ items: currentLine, width: currentLineW });
+    }
 
-    // canvas-to-DOM scale for hit-test zones
+    // Render lines of tags
     const scaleX = this.canvas.clientWidth / this.canvas.width;
     const scaleY = this.canvas.clientHeight / this.canvas.height;
     const rect = this.canvas.getBoundingClientRect();
 
-    tags.forEach((tag, idx) => {
-      const tw = widths[idx];
-      const tx = cursorX;
+    let lineY = tagY;
+    lines.forEach((line) => {
+      let cursorX = alignRight ? (barX + barWidth - line.width) : barX;
 
-      // Background pill
-      ctx.save();
-      ctx.fillStyle = tag.color + '33';
-      ctx.strokeStyle = tag.color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      const rx = 3;
-      ctx.roundRect(tx, tagY, tw, tagH, rx);
-      ctx.fill();
-      ctx.stroke();
+      line.items.forEach((tag) => {
+        const tw = tag._width;
+        const tx = cursorX;
 
-      ctx.fillStyle = tag.color;
-      ctx.textAlign = 'left';
-      ctx.fillText(tag.label, tx + padX, tagY + tagH - 3);
-      ctx.restore();
+        ctx.save();
+        ctx.fillStyle = tag.color + '33';
+        ctx.strokeStyle = tag.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(tx, lineY, tw, tagH, 3);
+        ctx.fill();
+        ctx.stroke();
 
-      // Register hover zone in screen-pixel space
-      this._hoverZones.push({
-        x: rect.left + tx * scaleX,
-        y: rect.top + tagY * scaleY,
-        w: tw * scaleX,
-        h: tagH * scaleY,
-        desc: tag.desc,
-        color: tag.color,
+        ctx.fillStyle = tag.color;
+        ctx.textAlign = 'left';
+        ctx.fillText(tag.label, tx + padX, lineY + tagH - 3);
+        ctx.restore();
+
+        this._hoverZones.push({
+          x: rect.left + tx * scaleX,
+          y: rect.top + lineY * scaleY,
+          w: tw * scaleX,
+          h: tagH * scaleY,
+          desc: tag.desc,
+          color: tag.color,
+        });
+
+        cursorX += tw + gap;
       });
 
-      cursorX += tw + gap;
+      lineY += tagH + 3;
     });
   }
 
