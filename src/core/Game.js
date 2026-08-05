@@ -621,7 +621,7 @@ export class Game {
     const balls = [this.player, ...livingEnemies];
     const events = stepWorld(balls, dt, this.barriers, this.platforms, this.obstacles);
     for (const evt of events) {
-      if (evt.type === 'wall') {
+      if (evt.type === 'wall' || evt.type === 'barrier') {
         soundEngine.playWallBounce();
         this.events.emit('wall-bounce', { ball: evt.ball });
       }

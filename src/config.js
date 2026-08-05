@@ -183,20 +183,20 @@ export const CONFIG = {
   arenaLayouts: {
     1: { platforms: [], obstacles: [] },
     2: {
-      platforms: [{ x: 540, y: 380, w: 200, h: 16 }],
+      platforms: [{ x: 540, y: 380, w: 200, h: 20, active: true }],
       obstacles: [{ x: 620, y: 480, w: 40, h: 120, hp: 60, maxHp: 60, active: true }],
     },
     3: {
       platforms: [
-        { x: 420, y: 340, w: 160, h: 16 },
-        { x: 700, y: 340, w: 160, h: 16 },
+        { x: 420, y: 340, w: 160, h: 20, active: true },
+        { x: 700, y: 340, w: 160, h: 20, active: true },
       ],
       obstacles: [{ x: 620, y: 450, w: 40, h: 150, hp: 90, maxHp: 90, active: true }],
     },
     4: {
       platforms: [
-        { x: 380, y: 320, w: 140, h: 16 },
-        { x: 760, y: 320, w: 140, h: 16 },
+        { x: 380, y: 320, w: 140, h: 20, active: true },
+        { x: 760, y: 320, w: 140, h: 20, active: true },
       ],
       obstacles: [
         { x: 520, y: 420, w: 35, h: 180, hp: 120, maxHp: 120, active: true },
@@ -205,8 +205,8 @@ export const CONFIG = {
     },
     5: {
       platforms: [
-        { x: 340, y: 280, w: 180, h: 16 },
-        { x: 760, y: 280, w: 180, h: 16 },
+        { x: 340, y: 280, w: 180, h: 20, active: true },
+        { x: 760, y: 280, w: 180, h: 20, active: true },
       ],
       obstacles: [
         { x: 615, y: 360, w: 50, h: 240, hp: 200, maxHp: 200, active: true },

@@ -128,7 +128,7 @@ export function resolveBarrierCollisions(ball, barriers) {
   const r = ball.radius || B.radius;
 
   for (const barrier of barriers) {
-    if (!barrier.active) continue;
+    if (barrier.active === false) continue;
 
     const cx = Math.max(barrier.x, Math.min(ball.x, barrier.x + barrier.w));
     const cy = Math.max(barrier.y, Math.min(ball.y, barrier.y + barrier.h));
@@ -160,18 +160,20 @@ export function resolveBarrierCollisions(ball, barriers) {
     if (velDot < 0) {
       const impactSpeed = Math.abs(velDot);
 
-      // Juggernaut Heavy Ball instantly shatters obstacle blocks
-      if (ball.ballType === 'juggernaut' || ball.isShard) {
-        barrier.hp = 0;
-        barrier.active = false;
-      } else if (barrier.maxHp && impactSpeed >= 30) {
-        const dmg = Math.round(impactSpeed * 0.15);
-        barrier.hp = Math.max(0, (barrier.hp ?? barrier.maxHp) - dmg);
-        if (barrier.hp <= 0) barrier.active = false;
-      } else if (impactSpeed >= CONFIG.damage.barrierImpactMinSpeed) {
-        const dmg = Math.round(impactSpeed * 0.05);
-        barrier.hp = Math.max(0, (barrier.hp ?? CONFIG.damage.barrierHp) - dmg);
-        if (barrier.hp <= 0) barrier.active = false;
+      // Only apply destruction logic if structure is destructible (has HP)
+      if (barrier.hp !== undefined || barrier.maxHp !== undefined) {
+        if (ball.ballType === 'juggernaut' || ball.isShard) {
+          barrier.hp = 0;
+          barrier.active = false;
+        } else if (barrier.maxHp && impactSpeed >= 30) {
+          const dmg = Math.round(impactSpeed * 0.15);
+          barrier.hp = Math.max(0, (barrier.hp ?? barrier.maxHp) - dmg);
+          if (barrier.hp <= 0) barrier.active = false;
+        } else if (impactSpeed >= CONFIG.damage.barrierImpactMinSpeed) {
+          const dmg = Math.round(impactSpeed * 0.05);
+          barrier.hp = Math.max(0, (barrier.hp ?? CONFIG.damage.barrierHp) - dmg);
+          if (barrier.hp <= 0) barrier.active = false;
+        }
       }
 
       ball.vx -= (1 + W.wallRestitution) * velDot * nx;
