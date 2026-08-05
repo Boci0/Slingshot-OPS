@@ -133,7 +133,7 @@ export class RunState {
         if (this.hp > this.maxHp) this.hp = this.maxHp;
         break;
       case 'boon_swift':
-        // handled per stack in combat
+        this.atkMult += 0.15;
         break;
       case 'boon_power':
         // handled per stack in combat launch power

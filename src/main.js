@@ -447,10 +447,9 @@ function startCombat(node) {
   if (run.hp <= 0) run.hp = 1;
 
   const swiftCount = run.getBoonCount('boon_swift');
-  const thinkDelay = CONFIG.ai.thinkDelay - swiftCount * 0.2;
-
   const powerCount = run.getBoonCount('boon_power');
-  const maxPowerMult = 1 + powerCount * 0.15;
+  const maxPowerMult = 1 + powerCount * 0.15 + swiftCount * 0.15;
+  const thinkDelay = CONFIG.ai.thinkDelay;
   const riskLevel = saveSystem.getDifficultyLevel();
   const riskData = saveSystem.getRiskData();
 

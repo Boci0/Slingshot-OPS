@@ -348,7 +348,7 @@ export const CONFIG = {
     { id: 'boon_def', name: 'Hardened Shell', desc: '+4 DEF this run', color: '#7aa2ff' },
     { id: 'boon_hp', name: 'Colossus', desc: '+40 max HP this run', color: '#5fd3a8' },
     { id: 'boon_greed', name: 'Greed', desc: '+25% Gold from combat, but -5 max HP', color: '#ffd75e' },
-    { id: 'boon_swift', name: 'Swift Loader', desc: '-0.2s enemy think time (they shoot faster)', color: '#c792ea' },
+    { id: 'boon_swift', name: 'Swift Loader', desc: '+15% launch velocity and +15% ATK boost', color: '#c792ea' },
     { id: 'boon_power', name: 'Overdrive', desc: '+15% launch max power', color: '#e0655c' },
     { id: 'boon_regen', name: 'Regeneration', desc: '+10 HP after every combat', color: '#8fe3c1' },
   ],
