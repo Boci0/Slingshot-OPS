@@ -4,6 +4,7 @@
 // node events → slingshot battles → run results → meta progression.
 // ============================================================
 
+import './styles.css';
 import { CONFIG } from './config.js';
 import { Game } from './core/Game.js';
 import { SaveSystem } from './meta/SaveSystem.js';
