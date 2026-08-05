@@ -50,7 +50,8 @@ export class CollisionSystem {
     }
 
     const base = speedAPre >= speedBPre ? speedAPre : speedBPre;
-    baseDamage = Math.min(D.maxDamagePerHit, base * D.damagePerSpeed) * attackerAtk;
+    const maxCap = attacker.team === 'enemy' ? 60 : D.maxDamagePerHit;
+    baseDamage = Math.min(maxCap, base * D.damagePerSpeed) * attackerAtk;
 
     if (attacker.team === 'player') {
       const bs = this.stats.battleStats;
@@ -137,8 +138,18 @@ export class CollisionSystem {
       }
     }
 
-    // Direct Flat DEF Subtraction
-    let damageAfterDef = Math.max(1, baseDamage - victimDef);
+    // DEF Subtraction Logic (Enemy favored)
+    let damageAfterDef;
+    if (victim.team === 'player' && attacker.team === 'enemy') {
+      // Enemy attacks player:
+      // Enemies penetrate 25% of player DEF, and DEF can reduce baseDamage by at most 70% (30% minimum damage floor)
+      const effectiveDef = victimDef * 0.75;
+      const maxDefReduction = baseDamage * 0.70;
+      const actualDefReduction = Math.min(maxDefReduction, effectiveDef);
+      damageAfterDef = Math.max(baseDamage * 0.30, baseDamage - actualDefReduction);
+    } else {
+      damageAfterDef = Math.max(1, baseDamage - victimDef);
+    }
 
     if (victim.team === 'player' && this.stats.techStats?.hasKineticDampener) {
       victimDmgReductionPct += 0.25;

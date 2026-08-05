@@ -109,14 +109,14 @@ export const CONFIG = {
 
   // --- Enemy Tiers (Initial Base Enemy Stats per Floor) ---
   enemyTiers: {
-    1: { hp: 88, atk: 0.88, def: 0, aiDifficulty: 0.3 },
-    2: { hp: 108, atk: 0.96, def: 1, aiDifficulty: 0.42 },
-    3: { hp: 128, atk: 1.08, def: 2, aiDifficulty: 0.55 },
-    4: { hp: 156, atk: 1.2, def: 3, aiDifficulty: 0.68 },
-    5: { hp: 188, atk: 1.36, def: 4, aiDifficulty: 0.8 },
-    elite: { hp: 240, atk: 1.52, def: 5, aiDifficulty: 0.9 },
-    miniboss: { hp: 280, atk: 1.6, def: 5, aiDifficulty: 0.92 },
-    boss: { hp: 320, atk: 1.76, def: 6, aiDifficulty: 0.95 },
+    1: { hp: 95, atk: 1.05, def: 0, aiDifficulty: 0.35 },
+    2: { hp: 120, atk: 1.25, def: 1, aiDifficulty: 0.45 },
+    3: { hp: 150, atk: 1.50, def: 2, aiDifficulty: 0.60 },
+    4: { hp: 185, atk: 1.80, def: 3, aiDifficulty: 0.72 },
+    5: { hp: 225, atk: 2.15, def: 4, aiDifficulty: 0.85 },
+    elite: { hp: 280, atk: 2.30, def: 5, aiDifficulty: 0.92 },
+    miniboss: { hp: 340, atk: 2.45, def: 5, aiDifficulty: 0.94 },
+    boss: { hp: 400, atk: 2.65, def: 6, aiDifficulty: 0.96 },
   },
 
   // --- Risk Level Scaling Table (1 to 15) ---
