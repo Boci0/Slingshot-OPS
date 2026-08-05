@@ -136,25 +136,32 @@ export function resolveBarrierCollisions(ball, barriers) {
     const dy = ball.y - cy;
     const distSq = dx * dx + dy * dy;
 
-    if (distSq > r * r) continue;
+    if (distSq >= r * r) continue;
 
     const dist = Math.sqrt(distSq);
-    let nx, ny;
+    let nx = 0;
+    let ny = 0;
+    let overlap = 0;
 
     if (dist > 0.0001) {
       nx = dx / dist;
       ny = dy / dist;
+      overlap = r - dist;
     } else {
       const left = ball.x - barrier.x;
       const right = barrier.x + barrier.w - ball.x;
       const top = ball.y - barrier.y;
       const bottom = barrier.y + barrier.h - ball.y;
       const minSide = Math.min(left, right, top, bottom);
-      if (minSide === left) { nx = -1; ny = 0; }
-      else if (minSide === right) { nx = 1; ny = 0; }
-      else if (minSide === top) { nx = 0; ny = -1; }
-      else { nx = 0; ny = 1; }
+      if (minSide === left) { nx = -1; ny = 0; overlap = r + left; }
+      else if (minSide === right) { nx = 1; ny = 0; overlap = r + right; }
+      else if (minSide === top) { nx = 0; ny = -1; overlap = r + top; }
+      else { nx = 0; ny = 1; overlap = r + bottom; }
     }
+
+    // De-penetrate: push ball position outside barrier rectangle
+    ball.x += nx * overlap;
+    ball.y += ny * overlap;
 
     const velDot = ball.vx * nx + ball.vy * ny;
     if (velDot < 0) {
@@ -178,7 +185,17 @@ export function resolveBarrierCollisions(ball, barriers) {
 
       ball.vx -= (1 + W.wallRestitution) * velDot * nx;
       ball.vy -= (1 + W.wallRestitution) * velDot * ny;
-      events.push({ type: 'barrier', ball, barrier, side: { nx, ny }, impactSpeed });
+
+      // Platform top resting & friction
+      if (ny < -0.7) {
+        if (Math.abs(ball.vy) < 25) ball.vy = 0;
+        if (Math.abs(ball.vx) < 15) ball.vx *= 0.8;
+      }
+
+      // Only emit bounce event if impact speed is significant to avoid sfx spam
+      if (impactSpeed >= 20) {
+        events.push({ type: 'barrier', ball, barrier, side: { nx, ny }, impactSpeed });
+      }
     }
   }
 
