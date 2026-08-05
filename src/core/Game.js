@@ -140,14 +140,15 @@ export class Game {
 
     this.enemies = (config.enemies || []).map((e, i) => {
       const xPct = e.xPct ?? 0.7 + i * 0.12;
+      const archDef = CONFIG.enemyArchetypes[e.archetype] || CONFIG.enemyArchetypes.standard;
       return new Ball({
         x: W.width * xPct,
         y: groundY,
         team: 'enemy',
-        color: C.enemy,
-        darkColor: C.enemyDark,
+        color: archDef.color || C.enemy,
+        darkColor: archDef.darkColor || C.enemyDark,
         maxHp: e.maxHp || B.maxHp,
-        displayName: e.displayName || 'HOSTILE',
+        displayName: e.displayName || archDef.name,
         archetype: e.archetype || 'standard',
         atk: e.atk,
         def: e.def,
@@ -315,6 +316,34 @@ export class Game {
           enemy,
           ability: 'Fortify Shield',
           desc: 'Tank deploys a protective shield barrier!',
+        });
+      }
+    } else if (enemy.archetype === 'disruptor') {
+      const pullForce = (CONFIG.world.width * 0.5 - this.player.x) > 0 ? 160 : -160;
+      this.player.vx += pullForce;
+      this.renderer.addScreenShake(8);
+      soundEngine.playAbility('overdrive');
+      this.events.emit('enemy-ability', {
+        enemy,
+        ability: 'Singularity Grav-Pulse',
+        desc: 'Graviton Weaver distorts player trajectory!',
+      });
+    } else if (enemy.archetype === 'tactician') {
+      let ralliedAny = false;
+      for (const ally of this.enemies) {
+        if (ally !== enemy && ally.hp > 0 && !ally.isRallied) {
+          ally.isRallied = true;
+          ally.atk = Math.round((ally.atk || 1) * 1.20 * 100) / 100;
+          ally.def = (ally.def || 0) + 3;
+          ralliedAny = true;
+        }
+      }
+      if (ralliedAny) {
+        soundEngine.playAbility('barrier');
+        this.events.emit('enemy-ability', {
+          enemy,
+          ability: 'War Command',
+          desc: 'Commander rallies hostiles with +20% ATK and +3 DEF!',
         });
       }
     } else if (enemy.archetype === 'boss' || enemy.displayName === 'SECTOR COMMANDER') {
@@ -502,6 +531,25 @@ export class Game {
       } else {
         this.battleStats.playerDamageTaken += damage;
         this.events.emit('enemy-dealt-damage', { attacker, damage });
+
+        if (attacker.archetype === 'vampire') {
+          const healAmt = Math.max(1, Math.round(damage * 0.40));
+          attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmt);
+          this._spawnHitParticles(attacker.x, attacker.y);
+          this.events.emit('enemy-ability', {
+            enemy: attacker,
+            ability: 'Siphon Drain',
+            desc: `Siphon Drone stole ${healAmt} HP!`,
+          });
+        } else if (attacker.archetype === 'pyromancer') {
+          victim.burnTicks = 2;
+          victim.burnDmg = 8;
+          this.events.emit('enemy-ability', {
+            enemy: attacker,
+            ability: 'Thermal Flare Ignition',
+            desc: 'Blaze Mortar ignited player with 2 turns of Thermal Burn (8 DMG/turn)!',
+          });
+        }
       }
 
       if (victim.team === 'player' && this.techStats.hasEmergencyMedkit && !this.medkitUsed && victim.hp > 0 && victim.hp <= victim.maxHp * 0.25) {
