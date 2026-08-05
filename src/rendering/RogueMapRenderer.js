@@ -148,26 +148,34 @@ export class RogueMapRenderer {
   }
 
   _drawBackground(ctx) {
-    const grad = ctx.createLinearGradient(0, 0, M.floorWidth, M.floorHeight);
+    const margin = 3000;
+    const minX = -margin;
+    const maxX = M.floorWidth + margin;
+    const minY = -margin;
+    const maxY = M.floorHeight + margin;
+
+    const grad = ctx.createLinearGradient(minX, minY, maxX, maxY);
     grad.addColorStop(0, '#090d14');
     grad.addColorStop(0.5, '#111622');
     grad.addColorStop(1, '#090d14');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, M.floorWidth, M.floorHeight);
+    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
 
-    // Subtle atmospheric grid lines
+    // Atmospheric grid lines extending across infinite zoomed map space
     ctx.strokeStyle = 'rgba(122, 162, 255, 0.07)';
     ctx.lineWidth = 1;
-    for (let x = 0; x <= M.floorWidth; x += 50) {
+
+    const step = 50;
+    for (let x = minX; x <= maxX; x += step) {
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, M.floorHeight);
+      ctx.moveTo(x, minY);
+      ctx.lineTo(x, maxY);
       ctx.stroke();
     }
-    for (let y = 0; y <= M.floorHeight; y += 50) {
+    for (let y = minY; y <= maxY; y += step) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(M.floorWidth, y);
+      ctx.moveTo(minX, y);
+      ctx.lineTo(maxX, y);
       ctx.stroke();
     }
   }
